@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
@@ -9,7 +8,7 @@ import { DatabaseNotice } from "@/components/database-notice";
 import { SetupModal } from "@/components/setup-modal";
 import { getDatabaseErrorMessage } from "@/lib/database";
 import { formatMatchScore } from "@/lib/league";
-import { getModelPath, getModelPlayerPath } from "@/lib/model-paths";
+import { getModelPath } from "@/lib/model-paths";
 import { prisma } from "@/lib/prisma";
 
 type ModelHistoryPageProps = {
@@ -110,27 +109,17 @@ export default async function MatchHistoryPage({ params, searchParams }: ModelHi
           matches.map((match) => (
             <div
               key={match.id}
-              className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5"
+              className="rounded-2xl border border-slate-200 bg-slate-50/90 px-3 py-2 shadow-sm shadow-slate-200/40"
             >
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                <div className="lg:max-w-xs">
-                  <p className="text-base font-semibold text-slate-950">{formatMatchScore(match)}</p>
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    {new Date(match.matchDate).toLocaleDateString()}
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <Link
-                      href={getModelPlayerPath(modelId, match.playerAId)}
-                      className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:border-sky-300 hover:text-sky-700"
-                    >
-                      {match.playerA.name}
-                    </Link>
-                    <Link
-                      href={getModelPlayerPath(modelId, match.playerBId)}
-                      className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:border-sky-300 hover:text-sky-700"
-                    >
-                      {match.playerB.name}
-                    </Link>
+              <div className="flex flex-col gap-2.5 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0 lg:max-w-xs">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-semibold tracking-tight text-slate-950 sm:text-base">
+                      {formatMatchScore(match)}
+                    </p>
+                    <p className="shrink-0 text-[11px] font-medium text-slate-500 sm:text-xs">
+                      {new Date(match.matchDate).toLocaleDateString()}
+                    </p>
                   </div>
                 </div>
 
