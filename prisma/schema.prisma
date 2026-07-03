@@ -14,20 +14,25 @@ datasource db {
 }
 
 model Player {
-  id        String  @id @default(cuid())
-  name      String  @unique
-  isActive  Boolean @default(true)
+  id        String   @id @default(cuid())
+  modelId   String
+  name      String
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  model       Model   @relation(fields: [modelId], references: [id], onDelete: Cascade)
   homeMatches Match[] @relation("PlayerA")
   awayMatches Match[] @relation("PlayerB")
 
+  @@unique([modelId, name])
+  @@index([modelId, isActive])
   @@map("players")
 }
 
 model Match {
   id           String   @id @default(cuid())
+  modelId       String
   playerAId    String
   playerBId    String
   playerAScore Int
@@ -36,9 +41,23 @@ model Match {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  model   Model  @relation(fields: [modelId], references: [id], onDelete: Cascade)
   playerA Player @relation("PlayerA", fields: [playerAId], references: [id], onDelete: Restrict)
   playerB Player @relation("PlayerB", fields: [playerBId], references: [id], onDelete: Restrict)
 
+  @@index([modelId, matchDate])
   @@index([matchDate])
   @@map("matches")
+}
+
+model Model {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  players Player[]
+  matches Match[]
+
+  @@map("models")
 }

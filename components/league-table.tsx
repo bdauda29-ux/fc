@@ -1,15 +1,18 @@
 import Link from "next/link";
 
 import { formatDecimal, type LeagueRow } from "@/lib/league";
+import { getModelPlayerPath } from "@/lib/model-paths";
 
 type LeagueTableProps = {
   rows: LeagueRow[];
+  modelId: string;
   emptyMessage?: string;
   compact?: boolean;
 };
 
 export function LeagueTable({
   rows,
+  modelId,
   emptyMessage = "No matches recorded yet.",
   compact = false,
 }: LeagueTableProps) {
@@ -45,7 +48,7 @@ export function LeagueTable({
                 <td className="px-4 py-3 font-semibold text-slate-900">{row.pos}</td>
                 <td className="px-4 py-3">
                   <Link
-                    href={`/players/${row.playerId}`}
+                    href={getModelPlayerPath(modelId, row.playerId)}
                     className="font-medium text-slate-900 hover:text-sky-600"
                   >
                     {row.playerName}

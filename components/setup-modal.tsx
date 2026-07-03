@@ -4,16 +4,20 @@ import { createPlayer } from "@/app/actions";
 import { SubmitButton } from "@/components/submit-button";
 
 type SetupModalProps = {
+  modelId: string;
   title?: string;
   description?: string;
   redirectTo?: string;
+  playerSetupPath?: string;
   showBackdrop?: boolean;
 };
 
 export function SetupModal({
+  modelId,
   title = "Complete Setup First",
   description = "Create your first player before using the dashboard and other record screens.",
   redirectTo = "/",
+  playerSetupPath = redirectTo,
   showBackdrop = true,
 }: SetupModalProps) {
   return (
@@ -30,6 +34,7 @@ export function SetupModal({
         <p className="mt-3 text-sm leading-6 text-slate-500">{description}</p>
 
         <form action={createPlayer} className="mt-6 space-y-4">
+          <input type="hidden" name="modelId" value={modelId} />
           <input type="hidden" name="redirectTo" value={redirectTo} />
           <div>
             <label htmlFor="setup-player-name" className="mb-2 block text-sm font-medium text-slate-700">
@@ -50,7 +55,7 @@ export function SetupModal({
 
         <div className="mt-4 flex flex-wrap gap-3">
           <Link
-            href="/players"
+            href={playerSetupPath}
             className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-sky-300 hover:text-sky-700"
           >
             Open Player Setup
