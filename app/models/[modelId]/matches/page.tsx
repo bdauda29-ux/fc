@@ -221,17 +221,6 @@ export default async function MatchesPage({ params, searchParams }: MatchesPageP
                 <summary className="cursor-pointer text-sm font-semibold text-slate-900">
                   Bulk Import Matches
                 </summary>
-                <p className="mt-3 text-sm leading-6 text-slate-500">
-                  Paste one match per line using either format:
-                  <span className="mt-2 block font-medium text-slate-700">
-                    oc 2 - 3 Dr
-                  </span>
-                  <span className="mt-1 block font-medium text-slate-700">oc 2 - Dr 3</span>
-                  <span className="mt-2 block text-sm text-slate-500">
-                    Optional date prefix:
-                    <span className="mt-1 block font-medium text-slate-700">2026-07-03 oc 2 - 3 Dr</span>
-                  </span>
-                </p>
                 <form action={createMatchesBulk} className="mt-4 space-y-4">
                   <input type="hidden" name="modelId" value={modelId} />
                   <div>
@@ -245,7 +234,7 @@ export default async function MatchesPage({ params, searchParams }: MatchesPageP
                       id="matchesText"
                       name="matchesText"
                       rows={8}
-                      placeholder={`oc 2 - 3 Dr\noc 2 - Dr 3\n2026-07-03 oc 2 - 3 Dr`}
+                      placeholder="Paste bulk matches here, one per line"
                       required
                       className="w-full resize-y rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-sky-500"
                     />

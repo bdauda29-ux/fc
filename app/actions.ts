@@ -46,7 +46,6 @@ const matchIdentitySchema = z.object({
 
 const adminAuthSchema = z.object({
   adminUsername: z.string().min(1, "Username is required."),
-  adminPassword: z.string().min(1, "Password is required."),
 });
 
 const bulkMatchesSchema = z.object({
@@ -83,18 +82,22 @@ function redirectWithMessage(path: string, key: "success" | "error", message: st
   redirect(`${path}?${searchParams.toString()}`);
 }
 
-function requireAdminOrRedirect(formData: FormData, redirectPath: string) {
+function requireAdminOrRedirect(
+  formData: FormData,
+  redirectPath: string,
+  missingMessage = "Username is required to edit or delete matches.",
+  invalidMessage = "Invalid admin username.",
+) {
   const validated = adminAuthSchema.safeParse({
     adminUsername: formData.get("adminUsername"),
-    adminPassword: formData.get("adminPassword"),
   });
 
   if (!validated.success) {
-    redirectWithMessage(redirectPath, "error", "Login required to edit or delete matches.");
+    redirectWithMessage(redirectPath, "error", missingMessage);
   }
 
-  if (validated.data.adminUsername !== "admin" || validated.data.adminPassword !== "123") {
-    redirectWithMessage(redirectPath, "error", "Invalid admin login.");
+  if (validated.data.adminUsername !== "admin") {
+    redirectWithMessage(redirectPath, "error", invalidMessage);
   }
 }
 
@@ -207,6 +210,12 @@ export async function createModel(formData: FormData) {
 }
 
 export async function renameModel(formData: FormData) {
+  requireAdminOrRedirect(
+    formData,
+    "/models",
+    "Username is required to edit a model.",
+    "Invalid admin username for model edit.",
+  );
   const validated = renameModelSchema.safeParse({
     modelId: formData.get("modelId"),
     name: formData.get("name"),
@@ -234,6 +243,12 @@ export async function renameModel(formData: FormData) {
 }
 
 export async function deleteModel(formData: FormData) {
+  requireAdminOrRedirect(
+    formData,
+    "/models",
+    "Username is required to delete a model.",
+    "Invalid admin username for model deletion.",
+  );
   const validated = deleteModelSchema.safeParse({
     modelId: formData.get("modelId"),
   });

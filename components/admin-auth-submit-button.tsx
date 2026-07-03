@@ -22,11 +22,10 @@ export function AdminAuthSubmitButton({
         }
 
         const usernameField = form.querySelector<HTMLInputElement>('input[name="adminUsername"]');
-        const passwordField = form.querySelector<HTMLInputElement>('input[name="adminPassword"]');
 
-        if (!usernameField || !passwordField) {
+        if (!usernameField) {
           event.preventDefault();
-          window.alert("Missing admin fields.");
+          window.alert("Missing admin username field.");
           return;
         }
 
@@ -36,13 +35,6 @@ export function AdminAuthSubmitButton({
           return;
         }
         usernameField.value = username;
-
-        const password = window.prompt("Admin password");
-        if (!password) {
-          event.preventDefault();
-          return;
-        }
-        passwordField.value = password;
 
         if (confirmMessage && !window.confirm(confirmMessage)) {
           event.preventDefault();

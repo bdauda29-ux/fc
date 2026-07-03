@@ -154,7 +154,6 @@ export default async function MatchHistoryPage({ params, searchParams }: ModelHi
                           <input type="hidden" name="modelId" value={modelId} />
                           <input type="hidden" name="matchId" value={match.id} />
                           <input type="hidden" name="adminUsername" value="" />
-                          <input type="hidden" name="adminPassword" value="" />
 
                           <div className="grid gap-3 md:grid-cols-2">
                             <div>
@@ -275,7 +274,6 @@ export default async function MatchHistoryPage({ params, searchParams }: ModelHi
                       <input type="hidden" name="modelId" value={modelId} />
                       <input type="hidden" name="matchId" value={match.id} />
                       <input type="hidden" name="adminUsername" value="" />
-                      <input type="hidden" name="adminPassword" value="" />
                       <AdminAuthSubmitButton
                         label="Delete"
                         confirmMessage={`Delete ${match.playerA.name} ${match.playerAScore} - ${match.playerBScore} ${match.playerB.name}?`}
@@ -292,4 +290,3 @@ export default async function MatchHistoryPage({ params, searchParams }: ModelHi
     </div>
   );
 }
-
