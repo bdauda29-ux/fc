@@ -67,9 +67,7 @@ export default async function LeagueTablePage({ params }: ModelTablePageProps) {
         </p>
         <h1 className="mt-2 text-2xl font-bold text-slate-950">Current Standings</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-          The table for <span className="font-medium">{model?.name}</span> is calculated
-          dynamically from saved matches. Points = (Wins x 3) + Draws, AP = Points / MP, GD = GF -
-          GA, and Rating = (Points / MP) + (GD x 0.1).
+          Standings for <span className="font-medium">{model?.name}</span>.
         </p>
       </section>
 

@@ -22,6 +22,12 @@ export function AppShell({ children }: { children: ReactNode }) {
               >
                 League Models
               </Link>
+              <Link
+                href="/models"
+                className="rounded-full bg-sky-500 px-4 py-2 font-medium text-white hover:bg-sky-400"
+              >
+                🔀 Switch Model
+              </Link>
             </div>
           </div>
         </div>
