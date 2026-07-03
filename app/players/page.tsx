@@ -63,6 +63,7 @@ export default async function PlayersPage({ searchParams }: PlayersPageProps) {
           ) : null}
 
           <form action={createPlayer} className="mt-6 space-y-4">
+            <input type="hidden" name="redirectTo" value="/players" />
             <div>
               <label htmlFor="name" className="mb-2 block text-sm font-medium text-slate-700">
                 Player Name

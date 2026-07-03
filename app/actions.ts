@@ -12,6 +12,18 @@ const playerSchema = z.object({
   name: z.string().trim().min(2, "Player name must be at least 2 characters.").max(50),
 });
 
+function getSafeRedirectPath(value: FormDataEntryValue | null, fallback: string) {
+  if (typeof value !== "string") {
+    return fallback;
+  }
+
+  if (!value.startsWith("/") || value.startsWith("//")) {
+    return fallback;
+  }
+
+  return value;
+}
+
 const matchSchema = z
   .object({
     playerAId: z.string().min(1, "Select the first player."),
@@ -50,12 +62,13 @@ function refreshLeagueViews(playerId?: string) {
 }
 
 export async function createPlayer(formData: FormData) {
+  const redirectTo = getSafeRedirectPath(formData.get("redirectTo"), "/players");
   const validated = playerSchema.safeParse({
     name: formData.get("name"),
   });
 
   if (!validated.success) {
-    redirectWithMessage("/players", "error", validated.error.issues[0]?.message ?? "Invalid player.");
+    redirectWithMessage(redirectTo, "error", validated.error.issues[0]?.message ?? "Invalid player.");
   }
 
   try {
@@ -69,14 +82,14 @@ export async function createPlayer(formData: FormData) {
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
-      redirectWithMessage("/players", "error", "A player with that name already exists.");
+      redirectWithMessage(redirectTo, "error", "A player with that name already exists.");
     }
 
-    redirectWithMessage("/players", "error", getDatabaseErrorMessage(error));
+    redirectWithMessage(redirectTo, "error", getDatabaseErrorMessage(error));
   }
 
   refreshLeagueViews();
-  redirectWithMessage("/players", "success", "Player added successfully.");
+  redirectWithMessage(redirectTo, "success", "Player added successfully.");
 }
 
 export async function togglePlayerStatus(playerId: string, nextActive: boolean) {

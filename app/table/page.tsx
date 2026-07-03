@@ -2,6 +2,7 @@ import { connection } from "next/server";
 
 import { DatabaseNotice } from "@/components/database-notice";
 import { LeagueTable } from "@/components/league-table";
+import { SetupModal } from "@/components/setup-modal";
 import { getDatabaseErrorMessage } from "@/lib/database";
 import { computeLeagueTable } from "@/lib/league";
 import { prisma } from "@/lib/prisma";
@@ -27,10 +28,18 @@ export default async function LeagueTablePage() {
   }
 
   const table = computeLeagueTable(players, matches);
+  const needsSetup = !dbError && players.length === 0;
 
   return (
     <div className="grid gap-6">
       {dbError ? <DatabaseNotice message={dbError} /> : null}
+      {needsSetup ? (
+        <SetupModal
+          title="Setup Required Before League Table"
+          description="Create your first player to unlock standings and the rest of the tracking experience."
+          redirectTo="/table"
+        />
+      ) : null}
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-700">

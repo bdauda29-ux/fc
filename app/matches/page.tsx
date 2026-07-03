@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { createMatch } from "@/app/actions";
 import { DatabaseNotice } from "@/components/database-notice";
 import { LeagueTable } from "@/components/league-table";
+import { SetupModal } from "@/components/setup-modal";
 import { SubmitButton } from "@/components/submit-button";
 import { getDatabaseErrorMessage } from "@/lib/database";
 import { computeLeagueTable, formatMatchScore } from "@/lib/league";
@@ -55,10 +56,18 @@ export default async function MatchesPage({ searchParams }: MatchesPageProps) {
   const activePlayers = players.filter((player) => player.isActive);
   const table = computeLeagueTable(players, matches);
   const today = new Date().toISOString().slice(0, 10);
+  const needsSetup = !dbError && players.length === 0;
 
   return (
     <div className="grid gap-6">
       {dbError ? <DatabaseNotice message={dbError} /> : null}
+      {needsSetup ? (
+        <SetupModal
+          title="Setup Required Before Saving Matches"
+          description="Create your first player to unlock the match recorder and the rest of the league workflow."
+          redirectTo="/matches"
+        />
+      ) : null}
 
       <section className="grid gap-6 xl:grid-cols-[380px_1fr]">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">

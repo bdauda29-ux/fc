@@ -4,6 +4,7 @@ import { connection } from "next/server";
 
 import { DatabaseNotice } from "@/components/database-notice";
 import { LeagueTable } from "@/components/league-table";
+import { SetupModal } from "@/components/setup-modal";
 import { getDatabaseErrorMessage } from "@/lib/database";
 import { computeLeagueTable, formatMatchScore } from "@/lib/league";
 import { prisma } from "@/lib/prisma";
@@ -39,10 +40,18 @@ export default async function Home() {
   const table = computeLeagueTable(players, matches);
   const activePlayers = players.filter((player) => player.isActive).length;
   const totalGoals = matches.reduce((sum, match) => sum + match.playerAScore + match.playerBScore, 0);
+  const needsSetup = !dbError && players.length === 0;
 
   return (
     <div className="grid gap-6">
       {dbError ? <DatabaseNotice message={dbError} /> : null}
+      {needsSetup ? (
+        <SetupModal
+          title="Create Your First Player"
+          description="Before any records can be saved, complete the initial setup by creating your first player."
+          redirectTo="/"
+        />
+      ) : null}
 
       <section className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
         <div className="rounded-3xl bg-slate-950 p-8 text-white shadow-sm">

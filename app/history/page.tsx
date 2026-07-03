@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { connection } from "next/server";
 
 import { DatabaseNotice } from "@/components/database-notice";
+import { SetupModal } from "@/components/setup-modal";
 import { getDatabaseErrorMessage } from "@/lib/database";
 import { formatMatchScore } from "@/lib/league";
 import { prisma } from "@/lib/prisma";
@@ -15,23 +16,36 @@ export default async function MatchHistoryPage() {
   }>;
 
   let dbError: string | null = null;
+  let playersCount = 0;
   let matches: MatchWithPlayers[] = [];
 
   try {
-    matches = await prisma.match.findMany({
-      include: {
-        playerA: true,
-        playerB: true,
-      },
-      orderBy: [{ matchDate: "desc" }, { createdAt: "desc" }],
-    });
+    [playersCount, matches] = await Promise.all([
+      prisma.player.count(),
+      prisma.match.findMany({
+        include: {
+          playerA: true,
+          playerB: true,
+        },
+        orderBy: [{ matchDate: "desc" }, { createdAt: "desc" }],
+      }),
+    ]);
   } catch (error) {
     dbError = getDatabaseErrorMessage(error);
   }
 
+  const needsSetup = !dbError && playersCount === 0;
+
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
       {dbError ? <DatabaseNotice message={dbError} /> : null}
+      {needsSetup ? (
+        <SetupModal
+          title="Setup Required Before Match History"
+          description="Create your first player before accessing record screens like match history."
+          redirectTo="/history"
+        />
+      ) : null}
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>

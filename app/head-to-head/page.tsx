@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { connection } from "next/server";
 
 import { DatabaseNotice } from "@/components/database-notice";
+import { SetupModal } from "@/components/setup-modal";
 import { getDatabaseErrorMessage } from "@/lib/database";
 import { getHeadToHeadSummary } from "@/lib/league";
 import { prisma } from "@/lib/prisma";
@@ -58,10 +59,18 @@ export default async function HeadToHeadPage({ searchParams }: HeadToHeadPagePro
     playerA && playerB && playerA.id !== playerB.id
       ? getHeadToHeadSummary(playerA, playerB, matches)
       : null;
+  const needsSetup = !dbError && players.length === 0;
 
   return (
     <div className="grid gap-6">
       {dbError ? <DatabaseNotice message={dbError} /> : null}
+      {needsSetup ? (
+        <SetupModal
+          title="Setup Required Before Head-to-Head"
+          description="Create your first player before comparing records and direct meetings."
+          redirectTo="/head-to-head"
+        />
+      ) : null}
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-700">
