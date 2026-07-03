@@ -234,7 +234,7 @@ export default async function MatchesPage({ params, searchParams }: MatchesPageP
                       id="matchesText"
                       name="matchesText"
                       rows={8}
-                      placeholder="Paste bulk matches here, one per line"
+                      placeholder="Paste bulk matches here, one per line. Example: oc 2 vs 3 wakili"
                       required
                       className="w-full resize-y rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-sky-500"
                     />

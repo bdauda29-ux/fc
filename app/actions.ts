@@ -397,9 +397,11 @@ function normalizeName(value: string) {
   return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
+const BULK_SCORE_SEPARATOR = "[-–—−]";
+
 function parseBulkScore(rawValue: string) {
   const cleaned = rawValue.trim().replace(/\s+/g, "");
-  const match = cleaned.match(/^(\d+)(?:-|:)(\d+)$/);
+  const match = cleaned.match(new RegExp(`^(\\d+)(?:${BULK_SCORE_SEPARATOR}|:)(\\d+)$`));
 
   if (!match) {
     return null;
@@ -489,7 +491,7 @@ function splitBulkDatePrefix(line: string) {
 
 function parseInlineMatchLine(line: string) {
   const cleaned = line.trim().replace(/\s+/g, " ");
-  const dashMatch = cleaned.match(/^(.+?)\s+(\d+)\s*-\s*(\d+)\s+(.+)$/);
+  const dashMatch = cleaned.match(new RegExp(`^(.+?)\\s+(\\d+)\\s*${BULK_SCORE_SEPARATOR}\\s*(\\d+)\\s+(.+)$`));
   if (dashMatch) {
     return {
       playerAName: dashMatch[1].trim(),
@@ -499,13 +501,47 @@ function parseInlineMatchLine(line: string) {
     };
   }
 
-  const crossMatch = cleaned.match(/^(.+?)\s+(\d+)\s*-\s*(.+?)\s+(\d+)$/);
+  const crossMatch = cleaned.match(new RegExp(`^(.+?)\\s+(\\d+)\\s*${BULK_SCORE_SEPARATOR}\\s*(.+?)\\s+(\\d+)$`));
   if (crossMatch) {
     return {
       playerAName: crossMatch[1].trim(),
       playerAScore: Number(crossMatch[2]),
       playerBScore: Number(crossMatch[4]),
       playerBName: crossMatch[3].trim(),
+    };
+  }
+
+  const vsTrailingScoreMatch = cleaned.match(
+    new RegExp(`^(.+?)\\s+vs\\s+(.+?)\\s+(\\d+)\\s*(?:${BULK_SCORE_SEPARATOR}|:)\\s*(\\d+)$`, "i"),
+  );
+  if (vsTrailingScoreMatch) {
+    return {
+      playerAName: vsTrailingScoreMatch[1].trim(),
+      playerAScore: Number(vsTrailingScoreMatch[3]),
+      playerBScore: Number(vsTrailingScoreMatch[4]),
+      playerBName: vsTrailingScoreMatch[2].trim(),
+    };
+  }
+
+  const vsMiddleScoreMatch = cleaned.match(
+    new RegExp(`^(.+?)\\s+(\\d+)\\s*(?:${BULK_SCORE_SEPARATOR}|:)\\s*(\\d+)\\s+vs\\s+(.+)$`, "i"),
+  );
+  if (vsMiddleScoreMatch) {
+    return {
+      playerAName: vsMiddleScoreMatch[1].trim(),
+      playerAScore: Number(vsMiddleScoreMatch[2]),
+      playerBScore: Number(vsMiddleScoreMatch[3]),
+      playerBName: vsMiddleScoreMatch[4].trim(),
+    };
+  }
+
+  const vsSeparatorScoreMatch = cleaned.match(/^(.+?)\s+(\d+)\s+vs\s+(\d+)\s+(.+)$/i);
+  if (vsSeparatorScoreMatch) {
+    return {
+      playerAName: vsSeparatorScoreMatch[1].trim(),
+      playerAScore: Number(vsSeparatorScoreMatch[2]),
+      playerBScore: Number(vsSeparatorScoreMatch[3]),
+      playerBName: vsSeparatorScoreMatch[4].trim(),
     };
   }
 
