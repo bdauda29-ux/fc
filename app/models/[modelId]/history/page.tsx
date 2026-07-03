@@ -60,7 +60,6 @@ export default async function MatchHistoryPage({ params, searchParams }: ModelHi
 
   const needsSetup = !dbError && players.length === 0;
   const playersPath = getModelPath(modelId, "players");
-  const matchesPath = getModelPath(modelId, "matches");
 
   function getPlayerOptions(selectedPlayerId: string) {
     return players.filter((player) => player.isActive || player.id === selectedPlayerId);
@@ -91,23 +90,15 @@ export default async function MatchHistoryPage({ params, searchParams }: ModelHi
         </p>
       ) : null}
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-700">
-            Match History
-          </p>
-          <h1 className="mt-2 text-2xl font-bold text-slate-950">All Recorded Matches</h1>
-          <p className="mt-2 text-sm text-slate-500">
-            Browse every result stored inside <span className="font-medium">{model?.name}</span>,
-            newest first.
-          </p>
-        </div>
-        <Link
-          href={matchesPath}
-          className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-500"
-        >
-          Add Match
-        </Link>
+      <div>
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-700">
+          Match History
+        </p>
+        <h1 className="mt-2 text-2xl font-bold text-slate-950">All Recorded Matches</h1>
+        <p className="mt-2 text-sm text-slate-500">
+          Browse every result stored inside <span className="font-medium">{model?.name}</span>,
+          newest first.
+        </p>
       </div>
 
       <div className="mt-6 space-y-3">

@@ -1,14 +1,12 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { getModelBasePath, getModelPath } from "@/lib/model-paths";
+import { getModelPath } from "@/lib/model-paths";
 
-const modelNavigation = [
+const secondaryNavigation = [
   { segment: "dashboard", label: "Dashboard" },
   { segment: "players", label: "Players" },
-  { segment: "matches", label: "Add Match" },
   { segment: "history", label: "Match History" },
-  { segment: "table", label: "League Table" },
   { segment: "head-to-head", label: "Head-to-Head" },
 ];
 
@@ -34,36 +32,45 @@ export function ModelShell({
           </div>
           <div className="flex flex-wrap gap-3">
             <Link
-              href="/models"
-              className="rounded-xl border border-white/15 px-4 py-2 text-sm font-medium text-slate-100 hover:border-sky-400"
-            >
-              Switch Model
-            </Link>
-            <Link
               href={getModelPath(modelId, "matches")}
               className="rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-400"
             >
               Record Match
             </Link>
+            <Link
+              href={getModelPath(modelId, "table")}
+              className="rounded-xl border border-white/15 px-4 py-2 text-sm font-medium text-slate-100 hover:border-sky-400"
+            >
+              League Table
+            </Link>
           </div>
         </div>
-        <nav className="mt-5 flex flex-wrap gap-2">
-          {modelNavigation.map((item) => (
-            <Link
-              key={item.segment}
-              href={item.segment === "dashboard" ? getModelPath(modelId) : getModelPath(modelId, item.segment)}
-              className="rounded-full border border-white/15 px-3 py-1.5 text-sm text-slate-200 transition hover:border-sky-400 hover:text-white"
-            >
-              {item.label}
-            </Link>
-          ))}
+        <div className="mt-5">
+          <details className="inline-block">
+            <summary className="cursor-pointer rounded-full border border-white/15 px-3 py-1.5 text-sm text-slate-200 transition hover:border-sky-400 hover:text-white">
+              More
+            </summary>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {secondaryNavigation.map((item) => (
+                <Link
+                  key={item.segment}
+                  href={item.segment === "dashboard" ? getModelPath(modelId) : getModelPath(modelId, item.segment)}
+                  className="rounded-full border border-white/15 px-3 py-1.5 text-sm text-slate-200 transition hover:border-sky-400 hover:text-white"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          </details>
+        </div>
+        <footer className="mt-5 border-t border-white/10 pt-4">
           <Link
-            href={getModelBasePath(modelId)}
-            className="rounded-full border border-white/15 px-3 py-1.5 text-sm text-slate-200 transition hover:border-sky-400 hover:text-white"
+            href="/models"
+            className="inline-flex rounded-xl border border-white/15 px-4 py-2 text-sm font-medium text-slate-100 hover:border-sky-400"
           >
-            Model Home
+            Switch Model
           </Link>
-        </nav>
+        </footer>
       </section>
       {children}
     </div>

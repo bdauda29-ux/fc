@@ -91,7 +91,7 @@ export default async function MatchesPage({ params, searchParams }: MatchesPageP
       <section className="grid gap-6 xl:grid-cols-[380px_1fr]">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-700">
-            Add Match
+            Record Match
           </p>
           <h1 className="mt-2 text-2xl font-bold text-slate-950">Record a New Score</h1>
           <p className="mt-2 text-sm leading-6 text-slate-500">

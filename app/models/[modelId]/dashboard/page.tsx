@@ -166,7 +166,6 @@ export default async function ModelDashboardPage(props: PageProps<"/models/[mode
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {[
                 { href: playersPath, label: "Player Management" },
-                { href: matchesPath, label: "Add Match" },
                 { href: headToHeadPath, label: "Head-to-Head" },
                 { href: tablePath, label: "League Table" },
               ].map((item) => (
