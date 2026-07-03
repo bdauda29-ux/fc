@@ -417,12 +417,54 @@ function parseBulkScore(rawValue: string) {
 
 function parseBulkDate(rawValue: string) {
   const trimmed = rawValue.trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    const year = Number(isoMatch[1]);
+    const month = Number(isoMatch[2]);
+    const day = Number(isoMatch[3]);
+    const parsed = new Date(year, month - 1, day, 12, 0, 0, 0);
+
+    if (
+      parsed.getFullYear() !== year ||
+      parsed.getMonth() !== month - 1 ||
+      parsed.getDate() !== day
+    ) {
+      return null;
+    }
+
+    return parsed;
+  }
+
+  const slashMatch = trimmed.match(/^(\d{1,4})\/(\d{1,2})\/(\d{1,4})$/);
+  if (!slashMatch) {
     return null;
   }
 
-  const parsed = new Date(trimmed);
-  if (Number.isNaN(parsed.getTime())) {
+  let year = 0;
+  let month = 0;
+  let day = 0;
+
+  if (slashMatch[1].length === 4) {
+    year = Number(slashMatch[1]);
+    month = Number(slashMatch[2]);
+    day = Number(slashMatch[3]);
+  } else {
+    day = Number(slashMatch[1]);
+    month = Number(slashMatch[2]);
+    year = Number(slashMatch[3]);
+
+    if (slashMatch[3].length === 2) {
+      year += 2000;
+    }
+  }
+
+  const parsed = new Date(year, month - 1, day, 12, 0, 0, 0);
+  if (
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== month - 1 ||
+    parsed.getDate() !== day
+  ) {
     return null;
   }
 
@@ -431,7 +473,7 @@ function parseBulkDate(rawValue: string) {
 
 function splitBulkDatePrefix(line: string) {
   const trimmed = line.trim();
-  const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})\s*(?:[,|]\s*|\s+)(.+)$/);
+  const match = trimmed.match(/^(\d{1,4}[/-]\d{1,2}[/-]\d{1,4})\s*(?:[,|]\s*|\s+)(.+)$/);
 
   if (!match) {
     return { date: null as Date | null, remainder: trimmed };
