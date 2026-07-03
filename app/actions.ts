@@ -39,6 +39,11 @@ const deleteModelSchema = z.object({
   modelId: z.string().min(1, "Select a league model."),
 });
 
+const matchIdentitySchema = z.object({
+  modelId: z.string().min(1, "Select a league model."),
+  matchId: z.string().min(1, "Select a valid match."),
+});
+
 const matchSchema = z
   .object({
     modelId: z.string().min(1, "Select a league model."),
@@ -62,6 +67,70 @@ const matchSchema = z
 function redirectWithMessage(path: string, key: "success" | "error", message: string): never {
   const searchParams = new URLSearchParams({ [key]: message });
   redirect(`${path}?${searchParams.toString()}`);
+}
+
+async function findValidatedMatchPlayers(
+  modelId: string,
+  playerAId: string,
+  playerBId: string,
+  errorPath: string,
+  allowedInactivePlayerIds: string[] = [],
+) {
+  let playerA: Awaited<ReturnType<typeof prisma.player.findUnique>>;
+  let playerB: Awaited<ReturnType<typeof prisma.player.findUnique>>;
+
+  try {
+    [playerA, playerB] = await Promise.all([
+      prisma.player.findFirst({ where: { id: playerAId, modelId } }),
+      prisma.player.findFirst({ where: { id: playerBId, modelId } }),
+    ]);
+  } catch (error) {
+    redirectWithMessage(errorPath, "error", getDatabaseErrorMessage(error));
+  }
+
+  if (!playerA || !playerB) {
+    redirectWithMessage(errorPath, "error", "Match must have two valid players.");
+  }
+
+  const allowedInactiveIds = new Set(allowedInactivePlayerIds);
+
+  if (
+    (!playerA.isActive && !allowedInactiveIds.has(playerA.id)) ||
+    (!playerB.isActive && !allowedInactiveIds.has(playerB.id))
+  ) {
+    redirectWithMessage(errorPath, "error", "Only active players can be selected for a match.");
+  }
+
+  return { playerA, playerB };
+}
+
+async function getScopedMatchOrRedirect(matchId: string, modelId: string, errorPath: string) {
+  let match: {
+    id: string;
+    modelId: string;
+    playerAId: string;
+    playerBId: string;
+  } | null = null;
+
+  try {
+    match = await prisma.match.findFirst({
+      where: { id: matchId, modelId },
+      select: {
+        id: true,
+        modelId: true,
+        playerAId: true,
+        playerBId: true,
+      },
+    });
+  } catch (error) {
+    redirectWithMessage(errorPath, "error", getDatabaseErrorMessage(error));
+  }
+
+  if (!match) {
+    redirectWithMessage(errorPath, "error", "Match not found in this model.");
+  }
+
+  return match;
 }
 
 function refreshLeagueViews(modelId: string, playerId?: string) {
@@ -239,29 +308,12 @@ export async function createMatch(formData: FormData) {
     redirectWithMessage(matchesPath, "error", validated.error.issues[0]?.message ?? "Invalid match.");
   }
 
-  let playerA: Awaited<ReturnType<typeof prisma.player.findUnique>>;
-  let playerB: Awaited<ReturnType<typeof prisma.player.findUnique>>;
-
-  try {
-    [playerA, playerB] = await Promise.all([
-      prisma.player.findFirst({ where: { id: validated.data.playerAId, modelId: validated.data.modelId } }),
-      prisma.player.findFirst({ where: { id: validated.data.playerBId, modelId: validated.data.modelId } }),
-    ]);
-  } catch (error) {
-    redirectWithMessage(matchesPath, "error", getDatabaseErrorMessage(error));
-  }
-
-  if (!playerA || !playerB) {
-    redirectWithMessage(matchesPath, "error", "Match must have two valid players.");
-  }
-
-  if (!playerA.isActive || !playerB.isActive) {
-    redirectWithMessage(
-      matchesPath,
-      "error",
-      "Only active players can be selected for a new match.",
-    );
-  }
+  const { playerA, playerB } = await findValidatedMatchPlayers(
+    validated.data.modelId,
+    validated.data.playerAId,
+    validated.data.playerBId,
+    matchesPath,
+  );
 
   const matchDate = new Date(validated.data.matchDate);
 
@@ -295,4 +347,98 @@ export async function createMatch(formData: FormData) {
   });
 
   redirect(`${matchesPath}?${searchParams.toString()}`);
+}
+
+export async function updateMatch(formData: FormData) {
+  const modelId = typeof formData.get("modelId") === "string" ? (formData.get("modelId") as string) : "";
+  const historyPath = getModelPath(modelId, "history");
+  const identity = matchIdentitySchema.safeParse({
+    modelId: formData.get("modelId"),
+    matchId: formData.get("matchId"),
+  });
+  const validated = matchSchema.safeParse({
+    modelId: formData.get("modelId"),
+    playerAId: formData.get("playerAId"),
+    playerBId: formData.get("playerBId"),
+    playerAScore: formData.get("playerAScore"),
+    playerBScore: formData.get("playerBScore"),
+    matchDate: formData.get("matchDate"),
+  });
+
+  if (!identity.success) {
+    redirectWithMessage(historyPath, "error", "Invalid match selection.");
+  }
+
+  if (!validated.success) {
+    redirectWithMessage(historyPath, "error", validated.error.issues[0]?.message ?? "Invalid match.");
+  }
+
+  const existingMatch = await getScopedMatchOrRedirect(identity.data.matchId, identity.data.modelId, historyPath);
+  const { playerA, playerB } = await findValidatedMatchPlayers(
+    validated.data.modelId,
+    validated.data.playerAId,
+    validated.data.playerBId,
+    historyPath,
+    [existingMatch.playerAId, existingMatch.playerBId],
+  );
+  const matchDate = new Date(validated.data.matchDate);
+
+  if (Number.isNaN(matchDate.getTime())) {
+    redirectWithMessage(historyPath, "error", "Match date is invalid.");
+  }
+
+  try {
+    await prisma.match.update({
+      where: { id: existingMatch.id },
+      data: {
+        playerAId: playerA.id,
+        playerBId: playerB.id,
+        playerAScore: validated.data.playerAScore,
+        playerBScore: validated.data.playerBScore,
+        matchDate,
+      },
+    });
+  } catch (error) {
+    redirectWithMessage(historyPath, "error", getDatabaseErrorMessage(error));
+  }
+
+  const affectedPlayers = new Set([
+    existingMatch.playerAId,
+    existingMatch.playerBId,
+    playerA.id,
+    playerB.id,
+  ]);
+
+  for (const playerId of affectedPlayers) {
+    refreshLeagueViews(validated.data.modelId, playerId);
+  }
+
+  redirectWithMessage(historyPath, "success", "Match updated successfully.");
+}
+
+export async function deleteMatch(formData: FormData) {
+  const modelId = typeof formData.get("modelId") === "string" ? (formData.get("modelId") as string) : "";
+  const historyPath = getModelPath(modelId, "history");
+  const validated = matchIdentitySchema.safeParse({
+    modelId: formData.get("modelId"),
+    matchId: formData.get("matchId"),
+  });
+
+  if (!validated.success) {
+    redirectWithMessage(historyPath, "error", "Invalid match selection.");
+  }
+
+  const existingMatch = await getScopedMatchOrRedirect(validated.data.matchId, validated.data.modelId, historyPath);
+
+  try {
+    await prisma.match.delete({
+      where: { id: existingMatch.id },
+    });
+  } catch (error) {
+    redirectWithMessage(historyPath, "error", getDatabaseErrorMessage(error));
+  }
+
+  refreshLeagueViews(validated.data.modelId, existingMatch.playerAId);
+  refreshLeagueViews(validated.data.modelId, existingMatch.playerBId);
+  redirectWithMessage(historyPath, "success", "Match deleted successfully.");
 }
