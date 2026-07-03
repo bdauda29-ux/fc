@@ -44,6 +44,20 @@ const matchIdentitySchema = z.object({
   matchId: z.string().min(1, "Select a valid match."),
 });
 
+const adminAuthSchema = z.object({
+  adminUsername: z.string().min(1, "Username is required."),
+  adminPassword: z.string().min(1, "Password is required."),
+});
+
+const bulkMatchesSchema = z.object({
+  modelId: z.string().min(1, "Select a league model."),
+  matchesText: z
+    .string()
+    .trim()
+    .min(1, "Paste matches to import.")
+    .max(25000, "Bulk input is too large."),
+});
+
 const matchSchema = z
   .object({
     modelId: z.string().min(1, "Select a league model."),
@@ -67,6 +81,21 @@ const matchSchema = z
 function redirectWithMessage(path: string, key: "success" | "error", message: string): never {
   const searchParams = new URLSearchParams({ [key]: message });
   redirect(`${path}?${searchParams.toString()}`);
+}
+
+function requireAdminOrRedirect(formData: FormData, redirectPath: string) {
+  const validated = adminAuthSchema.safeParse({
+    adminUsername: formData.get("adminUsername"),
+    adminPassword: formData.get("adminPassword"),
+  });
+
+  if (!validated.success) {
+    redirectWithMessage(redirectPath, "error", "Login required to edit or delete matches.");
+  }
+
+  if (validated.data.adminUsername !== "admin" || validated.data.adminPassword !== "123") {
+    redirectWithMessage(redirectPath, "error", "Invalid admin login.");
+  }
 }
 
 async function findValidatedMatchPlayers(
@@ -349,9 +378,234 @@ export async function createMatch(formData: FormData) {
   redirect(`${matchesPath}?${searchParams.toString()}`);
 }
 
+function normalizeName(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function parseBulkScore(rawValue: string) {
+  const cleaned = rawValue.trim().replace(/\s+/g, "");
+  const match = cleaned.match(/^(\d+)(?:-|:)(\d+)$/);
+
+  if (!match) {
+    return null;
+  }
+
+  const a = Number(match[1]);
+  const b = Number(match[2]);
+
+  if (!Number.isInteger(a) || !Number.isInteger(b) || a < 0 || b < 0) {
+    return null;
+  }
+
+  return { playerAScore: a, playerBScore: b };
+}
+
+function parseBulkDate(rawValue: string) {
+  const trimmed = rawValue.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return null;
+  }
+
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function splitBulkDatePrefix(line: string) {
+  const trimmed = line.trim();
+  const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})\s*(?:[,|]\s*|\s+)(.+)$/);
+
+  if (!match) {
+    return { date: null as Date | null, remainder: trimmed };
+  }
+
+  const date = parseBulkDate(match[1]);
+  if (!date) {
+    return { date: null as Date | null, remainder: trimmed };
+  }
+
+  return { date, remainder: match[2].trim() };
+}
+
+function parseInlineMatchLine(line: string) {
+  const cleaned = line.trim().replace(/\s+/g, " ");
+  const dashMatch = cleaned.match(/^(.+?)\s+(\d+)\s*-\s*(\d+)\s+(.+)$/);
+  if (dashMatch) {
+    return {
+      playerAName: dashMatch[1].trim(),
+      playerAScore: Number(dashMatch[2]),
+      playerBScore: Number(dashMatch[3]),
+      playerBName: dashMatch[4].trim(),
+    };
+  }
+
+  const crossMatch = cleaned.match(/^(.+?)\s+(\d+)\s*-\s*(.+?)\s+(\d+)$/);
+  if (crossMatch) {
+    return {
+      playerAName: crossMatch[1].trim(),
+      playerAScore: Number(crossMatch[2]),
+      playerBScore: Number(crossMatch[4]),
+      playerBName: crossMatch[3].trim(),
+    };
+  }
+
+  return null;
+}
+
+export async function createMatchesBulk(formData: FormData) {
+  const modelId = typeof formData.get("modelId") === "string" ? (formData.get("modelId") as string) : "";
+  const matchesPath = getModelPath(modelId, "matches");
+  const validated = bulkMatchesSchema.safeParse({
+    modelId: formData.get("modelId"),
+    matchesText: formData.get("matchesText"),
+  });
+
+  if (!validated.success) {
+    redirectWithMessage(matchesPath, "error", validated.error.issues[0]?.message ?? "Invalid bulk input.");
+  }
+
+  let players: Array<{ id: string; name: string; isActive: boolean }> = [];
+
+  try {
+    players = await prisma.player.findMany({
+      where: { modelId: validated.data.modelId },
+      select: { id: true, name: true, isActive: true },
+    });
+  } catch (error) {
+    redirectWithMessage(matchesPath, "error", getDatabaseErrorMessage(error));
+  }
+
+  if (players.length === 0) {
+    redirectWithMessage(matchesPath, "error", "Create players in this model before importing matches.");
+  }
+
+  const playerByName = new Map<string, { id: string; isActive: boolean; name: string }>();
+  for (const player of players) {
+    playerByName.set(normalizeName(player.name), { id: player.id, isActive: player.isActive, name: player.name });
+  }
+
+  const rawLines = validated.data.matchesText.split(/\r?\n/).map((line) => line.trim());
+  const lines = rawLines.filter((line) => line.length > 0 && !line.startsWith("#"));
+
+  if (lines.length === 0) {
+    redirectWithMessage(matchesPath, "error", "Paste at least one match line.");
+  }
+
+  if (lines.length > 500) {
+    redirectWithMessage(matchesPath, "error", "Bulk import is limited to 500 matches at a time.");
+  }
+
+  const systemDate = new Date();
+  systemDate.setHours(12, 0, 0, 0);
+
+  const data: Array<{
+    modelId: string;
+    playerAId: string;
+    playerBId: string;
+    playerAScore: number;
+    playerBScore: number;
+    matchDate: Date;
+  }> = [];
+  const affectedPlayerIds = new Set<string>();
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const lineNumber = index + 1;
+    const rawLine = lines[index];
+    const { date: datePrefix, remainder } = splitBulkDatePrefix(rawLine);
+    const matchDate = datePrefix ?? new Date(systemDate);
+
+    let playerAName = "";
+    let playerBName = "";
+    let playerAScore = 0;
+    let playerBScore = 0;
+
+    const inline = parseInlineMatchLine(remainder);
+    if (inline) {
+      if (
+        !Number.isInteger(inline.playerAScore) ||
+        !Number.isInteger(inline.playerBScore) ||
+        inline.playerAScore < 0 ||
+        inline.playerBScore < 0
+      ) {
+        redirectWithMessage(matchesPath, "error", `Line ${lineNumber}: Scores must be non-negative integers.`);
+      }
+
+      playerAName = inline.playerAName;
+      playerBName = inline.playerBName;
+      playerAScore = inline.playerAScore;
+      playerBScore = inline.playerBScore;
+    } else {
+      const tokens = remainder
+        .split(/[|,]/)
+        .map((token) => token.trim())
+        .filter((token) => token.length > 0);
+
+      if (tokens.length !== 3) {
+        redirectWithMessage(
+          matchesPath,
+          "error",
+          `Line ${lineNumber}: Use "oc 2 - 3 Dr" or "oc 2 - Dr 3". Optionally prefix date: "YYYY-MM-DD oc 2 - 3 Dr".`,
+        );
+      }
+
+      playerAName = tokens[0];
+      playerBName = tokens[1];
+      const score = parseBulkScore(tokens[2]);
+      if (!score) {
+        redirectWithMessage(matchesPath, "error", `Line ${lineNumber}: Score must look like 3-0 or 3:0.`);
+      }
+      playerAScore = score.playerAScore;
+      playerBScore = score.playerBScore;
+    }
+
+    const playerA = playerByName.get(normalizeName(playerAName));
+    const playerB = playerByName.get(normalizeName(playerBName));
+
+    if (!playerA || !playerB) {
+      redirectWithMessage(matchesPath, "error", `Line ${lineNumber}: Player name not found in this model.`);
+    }
+
+    if (playerA.id === playerB.id) {
+      redirectWithMessage(matchesPath, "error", `Line ${lineNumber}: A player cannot play against himself.`);
+    }
+
+    if (!playerA.isActive || !playerB.isActive) {
+      redirectWithMessage(matchesPath, "error", `Line ${lineNumber}: Both players must be active to import a match.`);
+    }
+
+    data.push({
+      modelId: validated.data.modelId,
+      playerAId: playerA.id,
+      playerBId: playerB.id,
+      playerAScore,
+      playerBScore,
+      matchDate,
+    });
+    affectedPlayerIds.add(playerA.id);
+    affectedPlayerIds.add(playerB.id);
+  }
+
+  try {
+    await prisma.match.createMany({ data });
+  } catch (error) {
+    redirectWithMessage(matchesPath, "error", getDatabaseErrorMessage(error));
+  }
+
+  refreshLeagueViews(validated.data.modelId);
+  for (const playerId of affectedPlayerIds) {
+    refreshLeagueViews(validated.data.modelId, playerId);
+  }
+
+  redirectWithMessage(matchesPath, "success", `Imported ${data.length} matches successfully.`);
+}
+
 export async function updateMatch(formData: FormData) {
   const modelId = typeof formData.get("modelId") === "string" ? (formData.get("modelId") as string) : "";
   const historyPath = getModelPath(modelId, "history");
+  requireAdminOrRedirect(formData, historyPath);
   const identity = matchIdentitySchema.safeParse({
     modelId: formData.get("modelId"),
     matchId: formData.get("matchId"),
@@ -419,6 +673,7 @@ export async function updateMatch(formData: FormData) {
 export async function deleteMatch(formData: FormData) {
   const modelId = typeof formData.get("modelId") === "string" ? (formData.get("modelId") as string) : "";
   const historyPath = getModelPath(modelId, "history");
+  requireAdminOrRedirect(formData, historyPath);
   const validated = matchIdentitySchema.safeParse({
     modelId: formData.get("modelId"),
     matchId: formData.get("matchId"),

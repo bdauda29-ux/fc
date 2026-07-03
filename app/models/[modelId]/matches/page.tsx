@@ -2,7 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 
-import { createMatch } from "@/app/actions";
+import { createMatch, createMatchesBulk } from "@/app/actions";
 import { DatabaseNotice } from "@/components/database-notice";
 import { LeagueTable } from "@/components/league-table";
 import { SetupModal } from "@/components/setup-modal";
@@ -116,105 +116,148 @@ export default async function MatchesPage({ params, searchParams }: MatchesPageP
               You need at least two active players in this model before a match can be recorded.
             </p>
           ) : (
-            <form action={createMatch} className="mt-6 space-y-4">
-              <input type="hidden" name="modelId" value={modelId} />
-              <div>
-                <label htmlFor="playerAId" className="mb-2 block text-sm font-medium text-slate-700">
-                  Player A
-                </label>
-                <select
-                  id="playerAId"
-                  name="playerAId"
-                  required
-                  defaultValue=""
-                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
-                >
-                  <option value="" disabled>
-                    Select player
-                  </option>
-                  {activePlayers.map((player) => (
-                    <option key={player.id} value={player.id}>
-                      {player.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label htmlFor="playerBId" className="mb-2 block text-sm font-medium text-slate-700">
-                  Player B
-                </label>
-                <select
-                  id="playerBId"
-                  name="playerBId"
-                  required
-                  defaultValue=""
-                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
-                >
-                  <option value="" disabled>
-                    Select player
-                  </option>
-                  {activePlayers.map((player) => (
-                    <option key={player.id} value={player.id}>
-                      {player.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
+            <div className="mt-6 space-y-6">
+              <form action={createMatch} className="space-y-4">
+                <input type="hidden" name="modelId" value={modelId} />
                 <div>
-                  <label
-                    htmlFor="playerAScore"
-                    className="mb-2 block text-sm font-medium text-slate-700"
+                  <label htmlFor="playerAId" className="mb-2 block text-sm font-medium text-slate-700">
+                    Player A
+                  </label>
+                  <select
+                    id="playerAId"
+                    name="playerAId"
+                    required
+                    defaultValue=""
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
                   >
-                    Player A Score
+                    <option value="" disabled>
+                      Select player
+                    </option>
+                    {activePlayers.map((player) => (
+                      <option key={player.id} value={player.id}>
+                        {player.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="playerBId" className="mb-2 block text-sm font-medium text-slate-700">
+                    Player B
+                  </label>
+                  <select
+                    id="playerBId"
+                    name="playerBId"
+                    required
+                    defaultValue=""
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
+                  >
+                    <option value="" disabled>
+                      Select player
+                    </option>
+                    {activePlayers.map((player) => (
+                      <option key={player.id} value={player.id}>
+                        {player.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label
+                      htmlFor="playerAScore"
+                      className="mb-2 block text-sm font-medium text-slate-700"
+                    >
+                      Player A Score
+                    </label>
+                    <input
+                      id="playerAScore"
+                      name="playerAScore"
+                      type="number"
+                      min="0"
+                      step="1"
+                      required
+                      className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="playerBScore"
+                      className="mb-2 block text-sm font-medium text-slate-700"
+                    >
+                      Player B Score
+                    </label>
+                    <input
+                      id="playerBScore"
+                      name="playerBScore"
+                      type="number"
+                      min="0"
+                      step="1"
+                      required
+                      className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="matchDate" className="mb-2 block text-sm font-medium text-slate-700">
+                    Match Date
                   </label>
                   <input
-                    id="playerAScore"
-                    name="playerAScore"
-                    type="number"
-                    min="0"
-                    step="1"
+                    id="matchDate"
+                    name="matchDate"
+                    type="date"
                     required
+                    defaultValue={today}
                     className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
                   />
                 </div>
-                <div>
-                  <label
-                    htmlFor="playerBScore"
-                    className="mb-2 block text-sm font-medium text-slate-700"
-                  >
-                    Player B Score
-                  </label>
-                  <input
-                    id="playerBScore"
-                    name="playerBScore"
-                    type="number"
-                    min="0"
-                    step="1"
-                    required
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
+
+                <SubmitButton label="Save Match" pendingLabel="Saving match..." className="w-full" />
+              </form>
+
+              <details className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+                  Bulk Import Matches
+                </summary>
+                <p className="mt-3 text-sm leading-6 text-slate-500">
+                  Paste one match per line using either format:
+                  <span className="mt-2 block font-medium text-slate-700">
+                    oc 2 - 3 Dr
+                  </span>
+                  <span className="mt-1 block font-medium text-slate-700">oc 2 - Dr 3</span>
+                  <span className="mt-2 block text-sm text-slate-500">
+                    Optional date prefix:
+                    <span className="mt-1 block font-medium text-slate-700">2026-07-03 oc 2 - 3 Dr</span>
+                  </span>
+                </p>
+                <form action={createMatchesBulk} className="mt-4 space-y-4">
+                  <input type="hidden" name="modelId" value={modelId} />
+                  <div>
+                    <label
+                      htmlFor="matchesText"
+                      className="mb-2 block text-sm font-medium text-slate-700"
+                    >
+                      Bulk Matches
+                    </label>
+                    <textarea
+                      id="matchesText"
+                      name="matchesText"
+                      rows={8}
+                      placeholder={`oc 2 - 3 Dr\noc 2 - Dr 3\n2026-07-03 oc 2 - 3 Dr`}
+                      required
+                      className="w-full resize-y rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-sky-500"
+                    />
+                  </div>
+                  <SubmitButton
+                    label="Import Matches"
+                    pendingLabel="Importing..."
+                    className="w-full"
                   />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="matchDate" className="mb-2 block text-sm font-medium text-slate-700">
-                  Match Date
-                </label>
-                <input
-                  id="matchDate"
-                  name="matchDate"
-                  type="date"
-                  required
-                  defaultValue={today}
-                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
-                />
-              </div>
-
-              <SubmitButton label="Save Match" pendingLabel="Saving match..." className="w-full" />
-            </form>
+                </form>
+              </details>
+            </div>
           )}
         </div>
 
