@@ -9,11 +9,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <Link href="/models" className="text-2xl font-bold tracking-tight">
-                Football League Tracker
+                FIFA CHALLENGE
               </Link>
-              <p className="mt-1 text-sm text-slate-300">
-                Create league models, switch between templates, and keep every competition isolated.
-              </p>
             </div>
             <div className="flex flex-wrap gap-2 text-sm">
               <Link

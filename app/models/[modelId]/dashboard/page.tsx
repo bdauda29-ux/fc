@@ -149,7 +149,7 @@ export default async function ModelDashboardPage(props: PageProps<"/models/[mode
                 matches.slice(0, 6).map((match) => (
                   <div
                     key={match.id}
-                    className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+                    className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2"
                   >
                     <p className="font-medium text-slate-900">{formatMatchScore(match)}</p>
                     <p className="mt-1 text-xs text-slate-500">
