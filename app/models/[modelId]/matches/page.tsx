@@ -60,7 +60,7 @@ export default async function MatchesPage({ params, searchParams }: MatchesPageP
 
   const activePlayers = players.filter((player) => player.isActive);
   const table = computeLeagueTable(players, matches);
-  const recentMatches = matches.slice(0, 5).reverse();
+  const recentMatches = matches.slice(0, 5);
   const today = new Date().toISOString().slice(0, 10);
   const matchesPath = getModelPath(modelId, "matches");
   const playersPath = getModelPath(modelId, "players");
@@ -257,7 +257,7 @@ export default async function MatchesPage({ params, searchParams }: MatchesPageP
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-xl font-semibold text-slate-950">Recent Recorded Scores</h2>
             <p className="mt-1 text-sm text-slate-500">
-              Showing the 5 newest saved results, listed oldest to newest.
+              Showing the 5 newest saved results, listed newest to oldest.
             </p>
             {recentMatches.length > 0 ? (
               <div className="mt-4 space-y-3">

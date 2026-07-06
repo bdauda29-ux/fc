@@ -4,16 +4,22 @@ type AdminAuthSubmitButtonProps = {
   label: string;
   confirmMessage?: string;
   className?: string;
+  title?: string;
+  ariaLabel?: string;
 };
 
 export function AdminAuthSubmitButton({
   label,
   confirmMessage,
   className = "",
+  title,
+  ariaLabel,
 }: AdminAuthSubmitButtonProps) {
   return (
     <button
       type="submit"
+      title={title}
+      aria-label={ariaLabel}
       onClick={(event) => {
         const form = event.currentTarget.form;
 
