@@ -365,10 +365,8 @@ export async function createMatch(formData: FormData) {
     redirectWithMessage(matchesPath, "error", "Match date is invalid.");
   }
 
-  let match: Awaited<ReturnType<typeof prisma.match.create>>;
-
   try {
-    match = await prisma.match.create({
+    await prisma.match.create({
       data: {
         modelId: validated.data.modelId,
         playerAId: playerA.id,
@@ -387,7 +385,6 @@ export async function createMatch(formData: FormData) {
 
   const searchParams = new URLSearchParams({
     success: "Match recorded successfully.",
-    latest: match.id,
   });
 
   redirect(`${matchesPath}?${searchParams.toString()}`);

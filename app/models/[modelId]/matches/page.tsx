@@ -14,7 +14,7 @@ import { prisma } from "@/lib/prisma";
 
 type MatchesPageProps = {
   params: Promise<{ modelId: string }>;
-  searchParams: Promise<{ success?: string; error?: string; latest?: string }>;
+  searchParams: Promise<{ success?: string; error?: string }>;
 };
 
 export default async function MatchesPage({ params, searchParams }: MatchesPageProps) {
@@ -31,10 +31,9 @@ export default async function MatchesPage({ params, searchParams }: MatchesPageP
   let model: Awaited<ReturnType<typeof prisma.model.findUnique>> = null;
   let players: Awaited<ReturnType<typeof prisma.player.findMany>> = [];
   let matches: MatchWithPlayers[] = [];
-  let latestMatch: MatchWithPlayers | null = null;
 
   try {
-    [model, players, matches, latestMatch] = await Promise.all([
+    [model, players, matches] = await Promise.all([
       prisma.model.findUnique({
         where: { id: modelId },
       }),
@@ -50,15 +49,6 @@ export default async function MatchesPage({ params, searchParams }: MatchesPageP
         },
         orderBy: [{ matchDate: "desc" }, { createdAt: "desc" }],
       }),
-      query.latest
-        ? prisma.match.findFirst({
-            where: { id: query.latest, modelId },
-            include: {
-              playerA: true,
-              playerB: true,
-            },
-          })
-        : Promise.resolve(null),
     ]);
   } catch (error) {
     dbError = getDatabaseErrorMessage(error);
@@ -70,6 +60,7 @@ export default async function MatchesPage({ params, searchParams }: MatchesPageP
 
   const activePlayers = players.filter((player) => player.isActive);
   const table = computeLeagueTable(players, matches);
+  const recentMatches = matches.slice(0, 5).reverse();
   const today = new Date().toISOString().slice(0, 10);
   const matchesPath = getModelPath(modelId, "matches");
   const playersPath = getModelPath(modelId, "players");
@@ -264,17 +255,28 @@ export default async function MatchesPage({ params, searchParams }: MatchesPageP
           </div>
 
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-slate-950">Newest Recorded Score</h2>
-            {latestMatch ? (
-              <div className="mt-4 rounded-2xl bg-slate-50 p-4">
-                <p className="text-lg font-semibold text-slate-950">{formatMatchScore(latestMatch)}</p>
-                <p className="mt-2 text-sm text-slate-500">
-                  Played on {new Date(latestMatch.matchDate).toLocaleDateString()}
-                </p>
+            <h2 className="text-xl font-semibold text-slate-950">Recent Recorded Scores</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Showing the 5 newest saved results, listed oldest to newest.
+            </p>
+            {recentMatches.length > 0 ? (
+              <div className="mt-4 space-y-3">
+                {recentMatches.map((match) => (
+                  <div key={match.id} className="rounded-2xl bg-slate-50 px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-base font-semibold text-slate-950">
+                        {formatMatchScore(match)}
+                      </p>
+                      <p className="shrink-0 text-xs font-medium text-slate-500">
+                        {new Date(match.matchDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               <p className="mt-4 text-sm text-slate-500">
-                Save a new match to highlight the latest recorded score here.
+                Save a new match to show the newest recorded scores here.
               </p>
             )}
           </div>

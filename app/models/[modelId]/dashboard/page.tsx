@@ -126,7 +126,7 @@ export default async function ModelDashboardPage(props: PageProps<"/models/[mode
               View full table
             </Link>
           </div>
-          <LeagueTable rows={table.slice(0, 8)} compact modelId={modelId} />
+          <LeagueTable rows={table} compact modelId={modelId} />
         </div>
 
         <div className="space-y-4">

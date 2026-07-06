@@ -127,7 +127,7 @@ export default async function MatchHistoryPage({ params, searchParams }: ModelHi
                   <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
                     <details className="w-full sm:w-auto">
                       <summary className="inline-flex w-full cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 transition hover:border-sky-200 hover:bg-slate-50 sm:w-auto">
-                        Edit
+                        ✏️ Edit
                       </summary>
                       <div className="mt-2 rounded-2xl border border-slate-200 bg-white p-3">
                         <form action={updateMatch} className="grid gap-3">
@@ -255,7 +255,7 @@ export default async function MatchHistoryPage({ params, searchParams }: ModelHi
                       <input type="hidden" name="matchId" value={match.id} />
                       <input type="hidden" name="adminUsername" value="" />
                       <AdminAuthSubmitButton
-                        label="Delete"
+                        label="🗑️ Delete"
                         confirmMessage={`Delete ${match.playerA.name} ${match.playerAScore} - ${match.playerBScore} ${match.playerB.name}?`}
                         className="inline-flex w-full items-center justify-center rounded-xl border border-rose-200 px-4 py-1.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 sm:w-auto"
                       />
