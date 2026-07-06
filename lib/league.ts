@@ -218,3 +218,13 @@ export function formatMatchScore(
     match.playerB?.name ?? "Player B"
   }`;
 }
+
+export function formatMatchTimestamp(match: Pick<Match, "matchDate" | "createdAt">) {
+  const date = new Date(match.matchDate).toLocaleDateString();
+  const createdAt = new Date(match.createdAt).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  return `${date} ${createdAt}`;
+}

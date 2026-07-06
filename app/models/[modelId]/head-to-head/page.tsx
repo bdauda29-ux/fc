@@ -5,7 +5,7 @@ import { connection } from "next/server";
 import { DatabaseNotice } from "@/components/database-notice";
 import { SetupModal } from "@/components/setup-modal";
 import { getDatabaseErrorMessage } from "@/lib/database";
-import { getHeadToHeadSummary } from "@/lib/league";
+import { formatMatchTimestamp, getHeadToHeadSummary } from "@/lib/league";
 import { getModelPath } from "@/lib/model-paths";
 import { prisma } from "@/lib/prisma";
 
@@ -44,7 +44,7 @@ export default async function HeadToHeadPage({ params, searchParams }: HeadToHea
           playerA: true,
           playerB: true,
         },
-        orderBy: [{ matchDate: "desc" }, { createdAt: "desc" }],
+        orderBy: [{ createdAt: "desc" }, { matchDate: "desc" }],
       }),
     ]);
   } catch (error) {
@@ -226,9 +226,7 @@ export default async function HeadToHeadPage({ params, searchParams }: HeadToHea
                       {match.playerA.name} {match.playerAScore} - {match.playerBScore}{" "}
                       {match.playerB.name}
                     </p>
-                    <p className="mt-1 text-sm text-slate-500">
-                      {new Date(match.matchDate).toLocaleDateString()}
-                    </p>
+                    <p className="mt-1 text-sm text-slate-500">{formatMatchTimestamp(match)}</p>
                   </div>
                 ))
               )}

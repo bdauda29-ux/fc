@@ -8,7 +8,7 @@ import { LeagueTable } from "@/components/league-table";
 import { SetupModal } from "@/components/setup-modal";
 import { SubmitButton } from "@/components/submit-button";
 import { getDatabaseErrorMessage } from "@/lib/database";
-import { computeLeagueTable, formatMatchScore } from "@/lib/league";
+import { computeLeagueTable, formatMatchScore, formatMatchTimestamp } from "@/lib/league";
 import { getModelPath } from "@/lib/model-paths";
 import { prisma } from "@/lib/prisma";
 
@@ -47,7 +47,7 @@ export default async function MatchesPage({ params, searchParams }: MatchesPageP
           playerA: true,
           playerB: true,
         },
-        orderBy: [{ matchDate: "desc" }, { createdAt: "desc" }],
+        orderBy: [{ createdAt: "desc" }, { matchDate: "desc" }],
       }),
     ]);
   } catch (error) {
@@ -268,7 +268,7 @@ export default async function MatchesPage({ params, searchParams }: MatchesPageP
                         {formatMatchScore(match)}
                       </p>
                       <p className="shrink-0 text-xs font-medium text-slate-500">
-                        {new Date(match.matchDate).toLocaleDateString()}
+                        {formatMatchTimestamp(match)}
                       </p>
                     </div>
                   </div>

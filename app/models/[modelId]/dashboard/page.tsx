@@ -7,7 +7,7 @@ import { DatabaseNotice } from "@/components/database-notice";
 import { LeagueTable } from "@/components/league-table";
 import { SetupModal } from "@/components/setup-modal";
 import { getDatabaseErrorMessage } from "@/lib/database";
-import { computeLeagueTable, formatMatchScore } from "@/lib/league";
+import { computeLeagueTable, formatMatchScore, formatMatchTimestamp } from "@/lib/league";
 import { getModelPath } from "@/lib/model-paths";
 import { prisma } from "@/lib/prisma";
 
@@ -40,7 +40,7 @@ export default async function ModelDashboardPage(props: PageProps<"/models/[mode
           playerA: true,
           playerB: true,
         },
-        orderBy: [{ matchDate: "desc" }, { createdAt: "desc" }],
+        orderBy: [{ createdAt: "desc" }, { matchDate: "desc" }],
       }),
     ]);
   } catch (error) {
@@ -152,9 +152,7 @@ export default async function ModelDashboardPage(props: PageProps<"/models/[mode
                     className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2"
                   >
                     <p className="font-medium text-slate-900">{formatMatchScore(match)}</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {new Date(match.matchDate).toLocaleDateString()}
-                    </p>
+                    <p className="mt-1 text-xs text-slate-500">{formatMatchTimestamp(match)}</p>
                   </div>
                 ))
               )}

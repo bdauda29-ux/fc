@@ -7,7 +7,7 @@ import { AdminAuthSubmitButton } from "@/components/admin-auth-submit-button";
 import { DatabaseNotice } from "@/components/database-notice";
 import { SetupModal } from "@/components/setup-modal";
 import { getDatabaseErrorMessage } from "@/lib/database";
-import { formatMatchScore } from "@/lib/league";
+import { formatMatchScore, formatMatchTimestamp } from "@/lib/league";
 import { getModelPath } from "@/lib/model-paths";
 import { prisma } from "@/lib/prisma";
 
@@ -46,7 +46,7 @@ export default async function MatchHistoryPage({ params, searchParams }: ModelHi
           playerA: true,
           playerB: true,
         },
-        orderBy: [{ matchDate: "desc" }, { createdAt: "desc" }],
+        orderBy: [{ createdAt: "desc" }, { matchDate: "desc" }],
       }),
     ]);
   } catch (error) {
@@ -118,7 +118,7 @@ export default async function MatchHistoryPage({ params, searchParams }: ModelHi
                       {formatMatchScore(match)}
                     </p>
                     <p className="shrink-0 text-[11px] font-medium text-slate-500 sm:text-xs">
-                      {new Date(match.matchDate).toLocaleDateString()}
+                      {formatMatchTimestamp(match)}
                     </p>
                   </div>
                 </div>
