@@ -13,7 +13,16 @@ import { prisma } from "@/lib/prisma";
 
 type ModelHistoryPageProps = {
   params: Promise<{ modelId: string }>;
-  searchParams: Promise<{ success?: string; error?: string }>;
+  searchParams: Promise<{
+    success?: string;
+    error?: string;
+    playerAId?: string;
+    playerAScore?: string;
+    playerBId?: string;
+    playerBScore?: string;
+    matchDate?: string;
+    createdDate?: string;
+  }>;
 };
 
 export default async function MatchHistoryPage({ params, searchParams }: ModelHistoryPageProps) {
@@ -25,6 +34,53 @@ export default async function MatchHistoryPage({ params, searchParams }: ModelHi
 
   const { modelId } = await params;
   const query = await searchParams;
+
+  function getQueryValue(value?: string) {
+    return typeof value === "string" ? value.trim() : "";
+  }
+
+  function getDayRange(value: string) {
+    const start = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(start.getTime())) {
+      return null;
+    }
+
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+
+    return { gte: start, lt: end };
+  }
+
+  function getScoreFilter(value: string) {
+    if (value === "") {
+      return undefined;
+    }
+
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed >= 0 ? parsed : undefined;
+  }
+
+  const filters = {
+    playerAId: getQueryValue(query.playerAId),
+    playerAScore: getQueryValue(query.playerAScore),
+    playerBId: getQueryValue(query.playerBId),
+    playerBScore: getQueryValue(query.playerBScore),
+    matchDate: getQueryValue(query.matchDate),
+    createdDate: getQueryValue(query.createdDate),
+  };
+  const matchDateRange = filters.matchDate ? getDayRange(filters.matchDate) : null;
+  const createdDateRange = filters.createdDate ? getDayRange(filters.createdDate) : null;
+  const playerAScoreFilter = getScoreFilter(filters.playerAScore);
+  const playerBScoreFilter = getScoreFilter(filters.playerBScore);
+  const matchWhere: Prisma.MatchWhereInput = {
+    modelId,
+    ...(filters.playerAId ? { playerAId: filters.playerAId } : {}),
+    ...(filters.playerBId ? { playerBId: filters.playerBId } : {}),
+    ...(playerAScoreFilter !== undefined ? { playerAScore: playerAScoreFilter } : {}),
+    ...(playerBScoreFilter !== undefined ? { playerBScore: playerBScoreFilter } : {}),
+    ...(matchDateRange ? { matchDate: matchDateRange } : {}),
+    ...(createdDateRange ? { createdAt: createdDateRange } : {}),
+  };
 
   let dbError: string | null = null;
   let model: Awaited<ReturnType<typeof prisma.model.findUnique>> = null;
@@ -41,7 +97,7 @@ export default async function MatchHistoryPage({ params, searchParams }: ModelHi
         orderBy: [{ isActive: "desc" }, { name: "asc" }],
       }),
       prisma.match.findMany({
-        where: { modelId },
+        where: matchWhere,
         include: {
           playerA: true,
           playerB: true,
@@ -59,6 +115,7 @@ export default async function MatchHistoryPage({ params, searchParams }: ModelHi
 
   const needsSetup = !dbError && players.length === 0;
   const playersPath = getModelPath(modelId, "players");
+  const hasActiveFilters = Object.values(filters).some((value) => value !== "");
 
   function getPlayerOptions(selectedPlayerId: string) {
     return players.filter((player) => player.isActive || player.id === selectedPlayerId);
@@ -100,10 +157,139 @@ export default async function MatchHistoryPage({ params, searchParams }: ModelHi
         </p>
       </div>
 
+      <form className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-900">
+              Filter Columns
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Filter by every match history column and keep newest saved matches first.
+            </p>
+          </div>
+          <div className="text-sm text-slate-500">{matches.length} matches shown</div>
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div>
+            <label htmlFor="playerAId" className="mb-2 block text-sm font-medium text-slate-700">
+              Player A
+            </label>
+            <select
+              id="playerAId"
+              name="playerAId"
+              defaultValue={filters.playerAId}
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
+            >
+              <option value="">All players</option>
+              {players.map((player) => (
+                <option key={player.id} value={player.id}>
+                  {player.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="playerAScore" className="mb-2 block text-sm font-medium text-slate-700">
+              Player A Score
+            </label>
+            <input
+              id="playerAScore"
+              name="playerAScore"
+              type="number"
+              min="0"
+              step="1"
+              defaultValue={filters.playerAScore}
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="playerBId" className="mb-2 block text-sm font-medium text-slate-700">
+              Player B
+            </label>
+            <select
+              id="playerBId"
+              name="playerBId"
+              defaultValue={filters.playerBId}
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
+            >
+              <option value="">All players</option>
+              {players.map((player) => (
+                <option key={player.id} value={player.id}>
+                  {player.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="playerBScore" className="mb-2 block text-sm font-medium text-slate-700">
+              Player B Score
+            </label>
+            <input
+              id="playerBScore"
+              name="playerBScore"
+              type="number"
+              min="0"
+              step="1"
+              defaultValue={filters.playerBScore}
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="matchDate" className="mb-2 block text-sm font-medium text-slate-700">
+              Match Date
+            </label>
+            <input
+              id="matchDate"
+              name="matchDate"
+              type="date"
+              defaultValue={filters.matchDate}
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="createdDate" className="mb-2 block text-sm font-medium text-slate-700">
+              Saved Date
+            </label>
+            <input
+              id="createdDate"
+              name="createdDate"
+              type="date"
+              defaultValue={filters.createdDate}
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+          {hasActiveFilters ? (
+            <a
+              href={getModelPath(modelId, "history")}
+              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
+            >
+              Clear Filters
+            </a>
+          ) : null}
+          <button
+            type="submit"
+            className="inline-flex items-center justify-center rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-500"
+          >
+            Apply Filters
+          </button>
+        </div>
+      </form>
+
       <div className="mt-6 space-y-3">
         {matches.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
-            No matches have been recorded in this model yet.
+            {hasActiveFilters
+              ? "No matches found for the selected filters."
+              : "No matches have been recorded in this model yet."}
           </div>
         ) : (
           matches.map((match) => (
