@@ -14,7 +14,7 @@ import { prisma } from "@/lib/prisma";
 
 type MatchesPageProps = {
   params: Promise<{ modelId: string }>;
-  searchParams: Promise<{ success?: string; error?: string }>;
+  searchParams: Promise<{ success?: string; error?: string; sort?: string; dir?: string }>;
 };
 
 export default async function MatchesPage({ params, searchParams }: MatchesPageProps) {
@@ -251,7 +251,14 @@ export default async function MatchesPage({ params, searchParams }: MatchesPageP
                 </p>
               </div>
             </div>
-            <LeagueTable rows={table} modelId={modelId} />
+            <LeagueTable
+              rows={table}
+              modelId={modelId}
+              pathname={matchesPath}
+              query={query}
+              sort={query.sort}
+              dir={query.dir}
+            />
           </div>
 
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">

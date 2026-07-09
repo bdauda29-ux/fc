@@ -22,6 +22,20 @@ export type LeagueRow = {
   rating: number;
 };
 
+export type LeagueTableSortKey =
+  | "pos"
+  | "playerName"
+  | "mp"
+  | "rating"
+  | "wins"
+  | "draws"
+  | "losses"
+  | "points"
+  | "ap"
+  | "gd";
+
+export type LeagueTableSortDir = "asc" | "desc";
+
 export type HeadToHeadSummary = {
   totalMatches: number;
   playerA: {
@@ -206,6 +220,76 @@ export function getHeadToHeadSummary(
 
 export function formatDecimal(value: number) {
   return value.toFixed(2);
+}
+
+export function isLeagueTableSortKey(value: string | undefined): value is LeagueTableSortKey {
+  return (
+    value === "pos" ||
+    value === "playerName" ||
+    value === "mp" ||
+    value === "rating" ||
+    value === "wins" ||
+    value === "draws" ||
+    value === "losses" ||
+    value === "points" ||
+    value === "ap" ||
+    value === "gd"
+  );
+}
+
+export function getDefaultLeagueTableSortDir(key: LeagueTableSortKey): LeagueTableSortDir {
+  return key === "playerName" || key === "pos" ? "asc" : "desc";
+}
+
+export function sortLeagueRows(
+  rows: LeagueRow[],
+  sortKey: LeagueTableSortKey,
+  sortDir: LeagueTableSortDir,
+) {
+  const direction = sortDir === "asc" ? 1 : -1;
+
+  return [...rows].sort((left, right) => {
+    let comparison = 0;
+
+    switch (sortKey) {
+      case "playerName":
+        comparison = left.playerName.localeCompare(right.playerName);
+        break;
+      case "pos":
+        comparison = left.pos - right.pos;
+        break;
+      case "mp":
+        comparison = left.mp - right.mp;
+        break;
+      case "rating":
+        comparison = left.rating - right.rating;
+        break;
+      case "wins":
+        comparison = left.wins - right.wins;
+        break;
+      case "draws":
+        comparison = left.draws - right.draws;
+        break;
+      case "losses":
+        comparison = left.losses - right.losses;
+        break;
+      case "points":
+        comparison = left.points - right.points;
+        break;
+      case "ap":
+        comparison = left.ap - right.ap;
+        break;
+      case "gd":
+        comparison = left.gd - right.gd;
+        break;
+    }
+
+    if (comparison === 0) {
+      comparison = left.pos - right.pos || left.playerName.localeCompare(right.playerName);
+    }
+
+    return comparison * direction;
+  });
 }
 
 export function formatMatchScore(

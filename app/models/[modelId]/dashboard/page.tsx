@@ -19,6 +19,7 @@ export default async function ModelDashboardPage(props: PageProps<"/models/[mode
   }>;
 
   const { modelId } = await props.params;
+  const query = await props.searchParams;
 
   let dbError: string | null = null;
   let model: Awaited<ReturnType<typeof prisma.model.findUnique>> = null;
@@ -126,7 +127,15 @@ export default async function ModelDashboardPage(props: PageProps<"/models/[mode
               View full table
             </Link>
           </div>
-          <LeagueTable rows={table} compact modelId={modelId} />
+          <LeagueTable
+            rows={table}
+            compact
+            modelId={modelId}
+            pathname={getModelPath(modelId, "dashboard")}
+            query={query}
+            sort={typeof query.sort === "string" ? query.sort : undefined}
+            dir={typeof query.dir === "string" ? query.dir : undefined}
+          />
         </div>
 
         <div className="space-y-4">

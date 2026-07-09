@@ -11,12 +11,14 @@ import { prisma } from "@/lib/prisma";
 
 type ModelTablePageProps = {
   params: Promise<{ modelId: string }>;
+  searchParams: Promise<{ sort?: string; dir?: string }>;
 };
 
-export default async function LeagueTablePage({ params }: ModelTablePageProps) {
+export default async function LeagueTablePage({ params, searchParams }: ModelTablePageProps) {
   await connection();
 
   const { modelId } = await params;
+  const query = await searchParams;
 
   let dbError: string | null = null;
   let model: Awaited<ReturnType<typeof prisma.model.findUnique>> = null;
@@ -74,6 +76,10 @@ export default async function LeagueTablePage({ params }: ModelTablePageProps) {
       <LeagueTable
         rows={table}
         modelId={modelId}
+        pathname={getModelPath(modelId, "table")}
+        query={query}
+        sort={query.sort}
+        dir={query.dir}
         emptyMessage="No matches yet in this model, so the table is still empty."
       />
     </div>

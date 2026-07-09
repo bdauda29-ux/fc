@@ -16,12 +16,12 @@ type ModelHistoryPageProps = {
   searchParams: Promise<{
     success?: string;
     error?: string;
-    playerAId?: string;
-    playerAScore?: string;
-    playerBId?: string;
-    playerBScore?: string;
-    matchDate?: string;
-    createdDate?: string;
+    playerAId?: string | string[];
+    playerAScore?: string | string[];
+    playerBId?: string | string[];
+    playerBScore?: string | string[];
+    matchDate?: string | string[];
+    createdDate?: string | string[];
   }>;
 };
 
@@ -35,8 +35,9 @@ export default async function MatchHistoryPage({ params, searchParams }: ModelHi
   const { modelId } = await params;
   const query = await searchParams;
 
-  function getQueryValue(value?: string) {
-    return typeof value === "string" ? value.trim() : "";
+  function getQueryValues(value?: string | string[]) {
+    const values = Array.isArray(value) ? value : typeof value === "string" ? [value] : [];
+    return values.map((item) => item.trim()).filter((item) => item.length > 0);
   }
 
   function getDayRange(value: string) {
@@ -51,44 +52,80 @@ export default async function MatchHistoryPage({ params, searchParams }: ModelHi
     return { gte: start, lt: end };
   }
 
-  function getScoreFilter(value: string) {
-    if (value === "") {
-      return undefined;
-    }
-
-    const parsed = Number(value);
-    return Number.isInteger(parsed) && parsed >= 0 ? parsed : undefined;
+  function getScoreFilters(values: string[]) {
+    return [...new Set(values)]
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value >= 0);
   }
 
   const filters = {
-    playerAId: getQueryValue(query.playerAId),
-    playerAScore: getQueryValue(query.playerAScore),
-    playerBId: getQueryValue(query.playerBId),
-    playerBScore: getQueryValue(query.playerBScore),
-    matchDate: getQueryValue(query.matchDate),
-    createdDate: getQueryValue(query.createdDate),
+    playerAIds: getQueryValues(query.playerAId),
+    playerAScores: getScoreFilters(getQueryValues(query.playerAScore)),
+    playerBIds: getQueryValues(query.playerBId),
+    playerBScores: getScoreFilters(getQueryValues(query.playerBScore)),
+    matchDates: getQueryValues(query.matchDate),
+    createdDates: getQueryValues(query.createdDate),
   };
-  const matchDateRange = filters.matchDate ? getDayRange(filters.matchDate) : null;
-  const createdDateRange = filters.createdDate ? getDayRange(filters.createdDate) : null;
-  const playerAScoreFilter = getScoreFilter(filters.playerAScore);
-  const playerBScoreFilter = getScoreFilter(filters.playerBScore);
-  const matchWhere: Prisma.MatchWhereInput = {
-    modelId,
-    ...(filters.playerAId ? { playerAId: filters.playerAId } : {}),
-    ...(filters.playerBId ? { playerBId: filters.playerBId } : {}),
-    ...(playerAScoreFilter !== undefined ? { playerAScore: playerAScoreFilter } : {}),
-    ...(playerBScoreFilter !== undefined ? { playerBScore: playerBScoreFilter } : {}),
-    ...(matchDateRange ? { matchDate: matchDateRange } : {}),
-    ...(createdDateRange ? { createdAt: createdDateRange } : {}),
-  };
+  const selectedPlayerIds = [...new Set([...filters.playerAIds, ...filters.playerBIds])];
+  const matchDateRanges = filters.matchDates
+    .map((value) => getDayRange(value))
+    .filter((value): value is { gte: Date; lt: Date } => value !== null);
+  const createdDateRanges = filters.createdDates
+    .map((value) => getDayRange(value))
+    .filter((value): value is { gte: Date; lt: Date } => value !== null);
+  const matchWhereConditions: Prisma.MatchWhereInput[] = [
+    { modelId },
+    ...(selectedPlayerIds.length === 1
+      ? [
+          {
+            OR: [
+              { playerAId: { in: selectedPlayerIds } },
+              { playerBId: { in: selectedPlayerIds } },
+            ],
+          },
+        ]
+      : []),
+    ...(selectedPlayerIds.length > 1
+      ? [
+          {
+            AND: [
+              { playerAId: { in: selectedPlayerIds } },
+              { playerBId: { in: selectedPlayerIds } },
+            ],
+          },
+        ]
+      : []),
+    ...(filters.playerAScores.length > 0 ? [{ playerAScore: { in: filters.playerAScores } }] : []),
+    ...(filters.playerBScores.length > 0 ? [{ playerBScore: { in: filters.playerBScores } }] : []),
+    ...(matchDateRanges.length > 0
+      ? [{ OR: matchDateRanges.map((range) => ({ matchDate: range })) }]
+      : []),
+    ...(createdDateRanges.length > 0
+      ? [{ OR: createdDateRanges.map((range) => ({ createdAt: range })) }]
+      : []),
+  ];
+  const matchWhere: Prisma.MatchWhereInput =
+    matchWhereConditions.length === 1 ? matchWhereConditions[0] : { AND: matchWhereConditions };
 
   let dbError: string | null = null;
   let model: Awaited<ReturnType<typeof prisma.model.findUnique>> = null;
   let players: Awaited<ReturnType<typeof prisma.player.findMany>> = [];
   let matches: MatchWithPlayers[] = [];
+  let filterMatches: Awaited<
+    ReturnType<
+      typeof prisma.match.findMany<{
+        select: {
+          playerAScore: true;
+          playerBScore: true;
+          matchDate: true;
+          createdAt: true;
+        };
+      }>
+    >
+  > = [];
 
   try {
-    [model, players, matches] = await Promise.all([
+    [model, players, matches, filterMatches] = await Promise.all([
       prisma.model.findUnique({
         where: { id: modelId },
       }),
@@ -104,6 +141,16 @@ export default async function MatchHistoryPage({ params, searchParams }: ModelHi
         },
         orderBy: [{ createdAt: "desc" }, { matchDate: "desc" }],
       }),
+      prisma.match.findMany({
+        where: { modelId },
+        select: {
+          playerAScore: true,
+          playerBScore: true,
+          matchDate: true,
+          createdAt: true,
+        },
+        orderBy: [{ createdAt: "desc" }, { matchDate: "desc" }],
+      }),
     ]);
   } catch (error) {
     dbError = getDatabaseErrorMessage(error);
@@ -115,7 +162,19 @@ export default async function MatchHistoryPage({ params, searchParams }: ModelHi
 
   const needsSetup = !dbError && players.length === 0;
   const playersPath = getModelPath(modelId, "players");
-  const hasActiveFilters = Object.values(filters).some((value) => value !== "");
+  const hasActiveFilters = Object.values(filters).some((value) => value.length > 0);
+  const playerAScoreOptions = [...new Set(filterMatches.map((match) => match.playerAScore))].sort(
+    (left, right) => left - right,
+  );
+  const playerBScoreOptions = [...new Set(filterMatches.map((match) => match.playerBScore))].sort(
+    (left, right) => left - right,
+  );
+  const matchDateOptions = [
+    ...new Set(filterMatches.map((match) => new Date(match.matchDate).toISOString().slice(0, 10))),
+  ].sort((left, right) => right.localeCompare(left));
+  const createdDateOptions = [
+    ...new Set(filterMatches.map((match) => new Date(match.createdAt).toISOString().slice(0, 10))),
+  ].sort((left, right) => right.localeCompare(left));
 
   function getPlayerOptions(selectedPlayerId: string) {
     return players.filter((player) => player.isActive || player.id === selectedPlayerId);
@@ -164,7 +223,9 @@ export default async function MatchHistoryPage({ params, searchParams }: ModelHi
               Filter Columns
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Filter by every match history column and keep newest saved matches first.
+              Use Ctrl/Cmd to select multiple values for each column while keeping newest saved
+              matches first. Player selections match either side, and multiple players show matches
+              between the selected players.
             </p>
           </div>
           <div className="text-sm text-slate-500">{matches.length} matches shown</div>
@@ -178,10 +239,11 @@ export default async function MatchHistoryPage({ params, searchParams }: ModelHi
             <select
               id="playerAId"
               name="playerAId"
-              defaultValue={filters.playerAId}
+              multiple
+              size={Math.min(6, Math.max(3, players.length))}
+              defaultValue={filters.playerAIds}
               className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
             >
-              <option value="">All players</option>
               {players.map((player) => (
                 <option key={player.id} value={player.id}>
                   {player.name}
@@ -194,15 +256,20 @@ export default async function MatchHistoryPage({ params, searchParams }: ModelHi
             <label htmlFor="playerAScore" className="mb-2 block text-sm font-medium text-slate-700">
               Player A Score
             </label>
-            <input
+            <select
               id="playerAScore"
               name="playerAScore"
-              type="number"
-              min="0"
-              step="1"
-              defaultValue={filters.playerAScore}
+              multiple
+              size={Math.min(6, Math.max(3, playerAScoreOptions.length))}
+              defaultValue={filters.playerAScores.map(String)}
               className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
-            />
+            >
+              {playerAScoreOptions.map((score) => (
+                <option key={score} value={score}>
+                  {score}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -212,10 +279,11 @@ export default async function MatchHistoryPage({ params, searchParams }: ModelHi
             <select
               id="playerBId"
               name="playerBId"
-              defaultValue={filters.playerBId}
+              multiple
+              size={Math.min(6, Math.max(3, players.length))}
+              defaultValue={filters.playerBIds}
               className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
             >
-              <option value="">All players</option>
               {players.map((player) => (
                 <option key={player.id} value={player.id}>
                   {player.name}
@@ -228,41 +296,60 @@ export default async function MatchHistoryPage({ params, searchParams }: ModelHi
             <label htmlFor="playerBScore" className="mb-2 block text-sm font-medium text-slate-700">
               Player B Score
             </label>
-            <input
+            <select
               id="playerBScore"
               name="playerBScore"
-              type="number"
-              min="0"
-              step="1"
-              defaultValue={filters.playerBScore}
+              multiple
+              size={Math.min(6, Math.max(3, playerBScoreOptions.length))}
+              defaultValue={filters.playerBScores.map(String)}
               className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
-            />
+            >
+              {playerBScoreOptions.map((score) => (
+                <option key={score} value={score}>
+                  {score}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
             <label htmlFor="matchDate" className="mb-2 block text-sm font-medium text-slate-700">
               Match Date
             </label>
-            <input
+            <select
               id="matchDate"
               name="matchDate"
-              type="date"
-              defaultValue={filters.matchDate}
+              multiple
+              size={Math.min(6, Math.max(3, matchDateOptions.length))}
+              defaultValue={filters.matchDates}
               className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
-            />
+            >
+              {matchDateOptions.map((date) => (
+                <option key={date} value={date}>
+                  {date}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
             <label htmlFor="createdDate" className="mb-2 block text-sm font-medium text-slate-700">
               Saved Date
             </label>
-            <input
+            <select
               id="createdDate"
               name="createdDate"
-              type="date"
-              defaultValue={filters.createdDate}
+              multiple
+              size={Math.min(6, Math.max(3, createdDateOptions.length))}
+              defaultValue={filters.createdDates}
               className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
-            />
+            >
+              {createdDateOptions.map((date) => (
+                <option key={date} value={date}>
+                  {date}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
