@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { deleteMatch, updateMatch } from "@/app/actions";
 import { AdminAuthSubmitButton } from "@/components/admin-auth-submit-button";
 import { DatabaseNotice } from "@/components/database-notice";
+import { HistoryFilters } from "@/components/history-filters";
 import { SetupModal } from "@/components/setup-modal";
 import { getDatabaseErrorMessage } from "@/lib/database";
 import { formatMatchScore, formatMatchTimestamp } from "@/lib/league";
@@ -216,160 +217,18 @@ export default async function MatchHistoryPage({ params, searchParams }: ModelHi
         </p>
       </div>
 
-      <form className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-900">
-              Filter Columns
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Use Ctrl/Cmd to select multiple values for each column while keeping newest saved
-              matches first. Player selections match either side, and multiple players show matches
-              between the selected players.
-            </p>
-          </div>
-          <div className="text-sm text-slate-500">{matches.length} matches shown</div>
-        </div>
-
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          <div>
-            <label htmlFor="playerAId" className="mb-2 block text-sm font-medium text-slate-700">
-              Player A
-            </label>
-            <select
-              id="playerAId"
-              name="playerAId"
-              multiple
-              size={Math.min(6, Math.max(3, players.length))}
-              defaultValue={filters.playerAIds}
-              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
-            >
-              {players.map((player) => (
-                <option key={player.id} value={player.id}>
-                  {player.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="playerAScore" className="mb-2 block text-sm font-medium text-slate-700">
-              Player A Score
-            </label>
-            <select
-              id="playerAScore"
-              name="playerAScore"
-              multiple
-              size={Math.min(6, Math.max(3, playerAScoreOptions.length))}
-              defaultValue={filters.playerAScores.map(String)}
-              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
-            >
-              {playerAScoreOptions.map((score) => (
-                <option key={score} value={score}>
-                  {score}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="playerBId" className="mb-2 block text-sm font-medium text-slate-700">
-              Player B
-            </label>
-            <select
-              id="playerBId"
-              name="playerBId"
-              multiple
-              size={Math.min(6, Math.max(3, players.length))}
-              defaultValue={filters.playerBIds}
-              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
-            >
-              {players.map((player) => (
-                <option key={player.id} value={player.id}>
-                  {player.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="playerBScore" className="mb-2 block text-sm font-medium text-slate-700">
-              Player B Score
-            </label>
-            <select
-              id="playerBScore"
-              name="playerBScore"
-              multiple
-              size={Math.min(6, Math.max(3, playerBScoreOptions.length))}
-              defaultValue={filters.playerBScores.map(String)}
-              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
-            >
-              {playerBScoreOptions.map((score) => (
-                <option key={score} value={score}>
-                  {score}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="matchDate" className="mb-2 block text-sm font-medium text-slate-700">
-              Match Date
-            </label>
-            <select
-              id="matchDate"
-              name="matchDate"
-              multiple
-              size={Math.min(6, Math.max(3, matchDateOptions.length))}
-              defaultValue={filters.matchDates}
-              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
-            >
-              {matchDateOptions.map((date) => (
-                <option key={date} value={date}>
-                  {date}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="createdDate" className="mb-2 block text-sm font-medium text-slate-700">
-              Saved Date
-            </label>
-            <select
-              id="createdDate"
-              name="createdDate"
-              multiple
-              size={Math.min(6, Math.max(3, createdDateOptions.length))}
-              defaultValue={filters.createdDates}
-              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
-            >
-              {createdDateOptions.map((date) => (
-                <option key={date} value={date}>
-                  {date}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
-          {hasActiveFilters ? (
-            <a
-              href={getModelPath(modelId, "history")}
-              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
-            >
-              Clear Filters
-            </a>
-          ) : null}
-          <button
-            type="submit"
-            className="inline-flex items-center justify-center rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-500"
-          >
-            Apply Filters
-          </button>
-        </div>
-      </form>
+      <HistoryFilters
+        modelId={modelId}
+        matchesShown={matches.length}
+        hasActiveFilters={hasActiveFilters}
+        clearHref={getModelPath(modelId, "history")}
+        players={players.map((player) => ({ id: player.id, name: player.name }))}
+        playerAScoreOptions={playerAScoreOptions}
+        playerBScoreOptions={playerBScoreOptions}
+        matchDateOptions={matchDateOptions}
+        createdDateOptions={createdDateOptions}
+        filters={filters}
+      />
 
       <div className="mt-6 space-y-3">
         {matches.length === 0 ? (

@@ -416,6 +416,85 @@ function normalizeName(value: string) {
   return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
+function getEditDistance(left: string, right: string) {
+  if (left === right) {
+    return 0;
+  }
+
+  if (left.length === 0) {
+    return right.length;
+  }
+
+  if (right.length === 0) {
+    return left.length;
+  }
+
+  const leftChars = [...left];
+  const rightChars = [...right];
+  const prev = new Array<number>(rightChars.length + 1).fill(0);
+  const curr = new Array<number>(rightChars.length + 1).fill(0);
+
+  for (let j = 0; j <= rightChars.length; j += 1) {
+    prev[j] = j;
+  }
+
+  for (let i = 1; i <= leftChars.length; i += 1) {
+    curr[0] = i;
+    const leftChar = leftChars[i - 1];
+
+    for (let j = 1; j <= rightChars.length; j += 1) {
+      const cost = leftChar === rightChars[j - 1] ? 0 : 1;
+      curr[j] = Math.min(
+        prev[j] + 1,
+        curr[j - 1] + 1,
+        prev[j - 1] + cost,
+      );
+    }
+
+    for (let j = 0; j <= rightChars.length; j += 1) {
+      prev[j] = curr[j];
+    }
+  }
+
+  return prev[rightChars.length];
+}
+
+function getPlayerNameSuggestions(
+  rawName: string,
+  players: Array<{ name: string }>,
+  limit = 5,
+) {
+  const query = normalizeName(rawName);
+  if (!query) {
+    return [];
+  }
+
+  const scored = players
+    .map((player) => {
+      const normalized = normalizeName(player.name);
+      const distance = getEditDistance(query, normalized);
+      const isPrefix = normalized.startsWith(query) || query.startsWith(normalized);
+      const isSubstring = normalized.includes(query) || query.includes(normalized);
+
+      let bonus = 0;
+      if (isPrefix) {
+        bonus += 4;
+      } else if (isSubstring) {
+        bonus += 2;
+      }
+
+      return {
+        name: player.name,
+        score: distance - bonus,
+      };
+    })
+    .sort((a, b) => a.score - b.score || a.name.localeCompare(b.name));
+
+  return scored
+    .slice(0, Math.min(limit, scored.length))
+    .map((entry) => entry.name);
+}
+
 const BULK_SCORE_SEPARATOR = "[-–—−]";
 
 function parseBulkScore(rawValue: string) {
@@ -678,7 +757,24 @@ export async function createMatchesBulk(formData: FormData) {
     const playerB = playerByName.get(normalizeName(playerBName));
 
     if (!playerA || !playerB) {
-      redirectWithMessage(matchesPath, "error", `Line ${lineNumber}: Player name not found in this model.`);
+      const missing: Array<{ role: string; name: string }> = [];
+      if (!playerA) {
+        missing.push({ role: "Player A", name: playerAName });
+      }
+      if (!playerB) {
+        missing.push({ role: "Player B", name: playerBName });
+      }
+
+      const message = missing
+        .map((entry) => {
+          const suggestions = getPlayerNameSuggestions(entry.name, players);
+          const suggestionText =
+            suggestions.length > 0 ? ` Did you mean: ${suggestions.join(", ")}?` : "";
+          return `${entry.role} "${entry.name}" not found in this model.${suggestionText}`;
+        })
+        .join(" ");
+
+      redirectWithMessage(matchesPath, "error", `Line ${lineNumber}: ${message}`);
     }
 
     if (playerA.id === playerB.id) {

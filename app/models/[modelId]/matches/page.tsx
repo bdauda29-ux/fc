@@ -2,7 +2,8 @@ import type { Prisma } from "@prisma/client";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 
-import { createMatch, createMatchesBulk } from "@/app/actions";
+import { createMatch } from "@/app/actions";
+import { BulkMatchImporter } from "@/components/bulk-match-importer";
 import { DatabaseNotice } from "@/components/database-notice";
 import { LeagueTable } from "@/components/league-table";
 import { SetupModal } from "@/components/setup-modal";
@@ -212,30 +213,7 @@ export default async function MatchesPage({ params, searchParams }: MatchesPageP
                 <summary className="cursor-pointer text-sm font-semibold text-slate-900">
                   Bulk Import Matches
                 </summary>
-                <form action={createMatchesBulk} className="mt-4 space-y-4">
-                  <input type="hidden" name="modelId" value={modelId} />
-                  <div>
-                    <label
-                      htmlFor="matchesText"
-                      className="mb-2 block text-sm font-medium text-slate-700"
-                    >
-                      Bulk Matches
-                    </label>
-                    <textarea
-                      id="matchesText"
-                      name="matchesText"
-                      rows={8}
-                      placeholder="Paste bulk matches here, one per line. Example: oc 2 vs 3 wakili"
-                      required
-                      className="w-full resize-y rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-sky-500"
-                    />
-                  </div>
-                  <SubmitButton
-                    label="Import Matches"
-                    pendingLabel="Importing..."
-                    className="w-full"
-                  />
-                </form>
+                <BulkMatchImporter modelId={modelId} players={players.map((player) => ({ name: player.name }))} />
               </details>
             </div>
           )}
