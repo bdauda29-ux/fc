@@ -62,7 +62,8 @@ export default async function PlayerProfilePage({ params }: PlayerProfilePagePro
   }
 
   const table = computeLeagueTable(players, matches);
-  const row = table.find((entry) => entry.playerId === player.id);
+  const completeTable = computeLeagueTable(players, matches, { includeInactive: true });
+  const row = completeTable.find((entry) => entry.playerId === player.id);
   const playerMatches = matches.filter(
     (match) => match.playerAId === player.id || match.playerBId === player.id,
   );

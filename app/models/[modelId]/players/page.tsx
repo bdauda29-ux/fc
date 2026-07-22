@@ -48,7 +48,7 @@ export default async function ModelPlayersPage({ params, searchParams }: ModelPl
     notFound();
   }
 
-  const table = computeLeagueTable(players, matches);
+  const table = computeLeagueTable(players, matches, { includeInactive: true });
   const rowsByPlayerId = new Map(table.map((row) => [row.playerId, row]));
 
   return (

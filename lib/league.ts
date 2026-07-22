@@ -58,6 +58,9 @@ export type HeadToHeadSummary = {
 };
 
 type PlayerLike = Pick<Player, "id" | "name" | "isActive">;
+type ComputeLeagueTableOptions = {
+  includeInactive?: boolean;
+};
 
 function roundTo(value: number, places = 2) {
   return Number(value.toFixed(places));
@@ -95,10 +98,15 @@ function finalizeRow(row: Omit<LeagueRow, "pos">, pos: number): LeagueRow {
   };
 }
 
-export function computeLeagueTable(players: PlayerLike[], matches: MatchSummary[]): LeagueRow[] {
+export function computeLeagueTable(
+  players: PlayerLike[],
+  matches: MatchSummary[],
+  options: ComputeLeagueTableOptions = {},
+): LeagueRow[] {
   const table = new Map<string, Omit<LeagueRow, "pos">>();
+  const eligiblePlayers = options.includeInactive ? players : players.filter((player) => player.isActive);
 
-  for (const player of players) {
+  for (const player of eligiblePlayers) {
     table.set(player.id, buildBaseRow(player));
   }
 
@@ -156,8 +164,9 @@ export function getPlayerLeagueRow(
   playerId: string,
   players: PlayerLike[],
   matches: MatchSummary[],
+  options?: ComputeLeagueTableOptions,
 ): LeagueRow | undefined {
-  return computeLeagueTable(players, matches).find((row) => row.playerId === playerId);
+  return computeLeagueTable(players, matches, options).find((row) => row.playerId === playerId);
 }
 
 export function getHeadToHeadSummary(
