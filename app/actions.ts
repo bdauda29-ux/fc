@@ -106,7 +106,10 @@ async function findValidatedMatchPlayers(
   playerAId: string,
   playerBId: string,
   errorPath: string,
-  allowedInactivePlayerIds: string[] = [],
+  options: {
+    allowedInactivePlayerIds?: string[];
+    autoReactivateInactive?: boolean;
+  } = {},
 ) {
   let playerA: Awaited<ReturnType<typeof prisma.player.findUnique>>;
   let playerB: Awaited<ReturnType<typeof prisma.player.findUnique>>;
@@ -124,13 +127,31 @@ async function findValidatedMatchPlayers(
     redirectWithMessage(errorPath, "error", "Match must have two valid players.");
   }
 
-  const allowedInactiveIds = new Set(allowedInactivePlayerIds);
+  const allowedInactiveIds = new Set(options.allowedInactivePlayerIds ?? []);
 
   if (
     (!playerA.isActive && !allowedInactiveIds.has(playerA.id)) ||
     (!playerB.isActive && !allowedInactiveIds.has(playerB.id))
   ) {
-    redirectWithMessage(errorPath, "error", "Only active players can be selected for a match.");
+    if (!options.autoReactivateInactive) {
+      redirectWithMessage(errorPath, "error", "Only active players can be selected for a match.");
+    }
+
+    const idsToReactivate = [playerA, playerB].filter((player) => !player.isActive).map((player) => player.id);
+
+    try {
+      if (idsToReactivate.length > 0) {
+        await prisma.player.updateMany({
+          where: { modelId, id: { in: idsToReactivate } },
+          data: { isActive: true },
+        });
+      }
+    } catch (error) {
+      redirectWithMessage(errorPath, "error", getDatabaseErrorMessage(error));
+    }
+
+    playerA = { ...playerA, isActive: true };
+    playerB = { ...playerB, isActive: true };
   }
 
   return { playerA, playerB };
@@ -357,6 +378,7 @@ export async function createMatch(formData: FormData) {
     validated.data.playerAId,
     validated.data.playerBId,
     matchesPath,
+    { autoReactivateInactive: true },
   );
 
   const matchDate = new Date(validated.data.matchDate);
@@ -600,6 +622,7 @@ export async function createMatchesBulk(formData: FormData) {
     matchDate: Date;
   }> = [];
   const affectedPlayerIds = new Set<string>();
+  const reactivatedPlayerIds = new Set<string>();
 
   for (let index = 0; index < lines.length; index += 1) {
     const lineNumber = index + 1;
@@ -662,8 +685,12 @@ export async function createMatchesBulk(formData: FormData) {
       redirectWithMessage(matchesPath, "error", `Line ${lineNumber}: A player cannot play against himself.`);
     }
 
-    if (!playerA.isActive || !playerB.isActive) {
-      redirectWithMessage(matchesPath, "error", `Line ${lineNumber}: Both players must be active to import a match.`);
+    if (!playerA.isActive) {
+      reactivatedPlayerIds.add(playerA.id);
+    }
+
+    if (!playerB.isActive) {
+      reactivatedPlayerIds.add(playerB.id);
     }
 
     data.push({
@@ -679,7 +706,20 @@ export async function createMatchesBulk(formData: FormData) {
   }
 
   try {
-    await prisma.match.createMany({ data });
+    if (reactivatedPlayerIds.size > 0) {
+      await prisma.$transaction([
+        prisma.player.updateMany({
+          where: {
+            modelId: validated.data.modelId,
+            id: { in: [...reactivatedPlayerIds] },
+          },
+          data: { isActive: true },
+        }),
+        prisma.match.createMany({ data }),
+      ]);
+    } else {
+      await prisma.match.createMany({ data });
+    }
   } catch (error) {
     redirectWithMessage(matchesPath, "error", getDatabaseErrorMessage(error));
   }
@@ -723,7 +763,7 @@ export async function updateMatch(formData: FormData) {
     validated.data.playerAId,
     validated.data.playerBId,
     historyPath,
-    [existingMatch.playerAId, existingMatch.playerBId],
+    { allowedInactivePlayerIds: [existingMatch.playerAId, existingMatch.playerBId] },
   );
   const matchDate = new Date(validated.data.matchDate);
 

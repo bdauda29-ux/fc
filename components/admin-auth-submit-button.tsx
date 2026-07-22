@@ -6,6 +6,7 @@ type AdminAuthSubmitButtonProps = {
   className?: string;
   title?: string;
   ariaLabel?: string;
+  disabled?: boolean;
 };
 
 export function AdminAuthSubmitButton({
@@ -14,13 +15,20 @@ export function AdminAuthSubmitButton({
   className = "",
   title,
   ariaLabel,
+  disabled = false,
 }: AdminAuthSubmitButtonProps) {
   return (
     <button
       type="submit"
       title={title}
       aria-label={ariaLabel}
+      disabled={disabled}
       onClick={(event) => {
+        if (disabled) {
+          event.preventDefault();
+          return;
+        }
+
         const form = event.currentTarget.form;
 
         if (!form) {

@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { connection } from "next/server";
 
-import { createModel, deleteModel, renameModel } from "@/app/actions";
+import { createModel, deleteModel } from "@/app/actions";
 import { AdminAuthSubmitButton } from "@/components/admin-auth-submit-button";
 import { DatabaseNotice } from "@/components/database-notice";
+import { ModelRenameControl } from "@/components/model-rename-control";
 import { SubmitButton } from "@/components/submit-button";
 import { getDatabaseErrorMessage } from "@/lib/database";
 import { getModelPath } from "@/lib/model-paths";
@@ -116,27 +117,8 @@ export default async function ModelsPage({ searchParams }: ModelsPageProps) {
                     <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
                       Model Actions
                     </p>
-                    <form action={renameModel} className="flex flex-col gap-3 sm:flex-row">
-                      <input type="hidden" name="modelId" value={model.id} />
-                      <input type="hidden" name="adminUsername" value="" />
-                      <input
-                        name="name"
-                        type="text"
-                        defaultValue={model.name}
-                        required
-                        maxLength={50}
-                        className="min-w-0 flex-1 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-sky-500"
-                      />
-                      <div className="hidden">
-                        <SubmitButton label="Rename Model" pendingLabel="Saving..." />
-                      </div>
-                      <AdminAuthSubmitButton
-                        label="Rename Model"
-                        className="inline-flex items-center justify-center rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-500"
-                      />
-                    </form>
-
-                    <div className="flex justify-end">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <ModelRenameControl modelId={model.id} modelName={model.name} />
                       <form action={deleteModel}>
                         <input type="hidden" name="modelId" value={model.id} />
                         <input type="hidden" name="adminUsername" value="" />
